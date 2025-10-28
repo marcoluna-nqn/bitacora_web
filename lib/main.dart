@@ -434,7 +434,7 @@ class _HomeState extends State<Home> {
               const Divider(height: 0, thickness: 0),
               SizedBox(
                 height: 420,
-                child: ListView.builder(
+                child: ListView.builder(shrinkWrap: true, primary: false, 
                   padding: EdgeInsets.zero,
                   itemExtent: rowH,
                   itemCount: ctrl.rows.length,
@@ -617,4 +617,5 @@ class Debouncer {
   void call(void Function() action) { _t?.cancel(); _t = Timer(duration, action); }
   void dispose() => _t?.cancel();
 }
+
 
