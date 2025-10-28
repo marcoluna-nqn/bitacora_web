@@ -1,7 +1,7 @@
 ﻿// lib/main.dart
-// Bitácora Web — Grilla propia editable con autosave, backup/import JSON y export XLSX.
-// Sin SfDataGrid. TextFields controlados por celda. Enter mueve hacia abajo.
-// Flutter Web. Null-safe.
+// Bitácora Web — Grilla editable con autosave, backup/import JSON y export XLSX.
+// Encabezados editables (vacíos por defecto). Navegación con flechas/Tab/Enter.
+// Atajos: Ctrl+N (fila), Ctrl+E (XLSX), Ctrl+B (backup), Ctrl+U (import), Ctrl+L (limpiar), Ctrl+D (borrar fila).
 
 import 'dart:async' show Timer;
 import 'package:flutter/material.dart';
@@ -37,7 +37,7 @@ class _MyAppState extends State<MyApp> {
       scaffoldBackgroundColor: scaffold,
       cardColor: card,
       visualDensity: VisualDensity.compact,
-      fontFamilyFallback: const ['SF Pro Text', 'Inter', 'Roboto', 'Segoe UI', 'Helvetica', 'Arial'],
+      fontFamilyFallback: const ['SF Pro Text','Inter','Roboto','Segoe UI','Helvetica','Arial'],
       appBarTheme: AppBarTheme(
         backgroundColor: light ? Colors.white : const Color(0xFF0B1220),
         surfaceTintColor: Colors.transparent,
@@ -70,30 +70,25 @@ class _MyAppState extends State<MyApp> {
       theme: _buildTheme(true),
       darkTheme: _buildTheme(false),
       themeMode: _light ? ThemeMode.light : ThemeMode.dark,
-      home: Home(
-        isLight: _light,
-        onToggleTheme: () => setState(() => _light = !_light),
-      ),
+      home: Home(isLight: _light, onToggleTheme: () => setState(() => _light = !_light)),
     );
   }
 }
 
 // -------------------- Modelo --------------------
 class TableController {
+  static const int defaultCols = 5;
+
   TableController() {
     final loaded = LocalStore.load();
     if (loaded != null && loaded.headers.isNotEmpty) {
       headers = List<String>.from(loaded.headers);
       rows = loaded.rows.map((r) => _padRow(r)).toList(growable: true);
     } else {
-      headers = List<String>.from(_defaultHeaders);
+      headers = List<String>.filled(defaultCols, ''); // VACÍOS por defecto
       rows = List<List<String>>.generate(3, (_) => List<String>.filled(headers.length, ''));
     }
   }
-
-  static const List<String> _defaultHeaders = <String>[
-    'Fecha', 'Progresiva', 'Ω@1m', 'Ω@3m', 'Observaciones'
-  ];
 
   late List<String> headers;
   late List<List<String>> rows;
@@ -107,6 +102,14 @@ class TableController {
     saveDebounced();
   }
 
+  void removeRow(int index) {
+    if (rows.isEmpty) return;
+    final i = index.clamp(0, rows.length - 1);
+    rows.removeAt(i);
+    if (rows.isEmpty) addRow();
+    saveDebounced();
+  }
+
   void clearAll() {
     rows
       ..clear()
@@ -114,9 +117,9 @@ class TableController {
     saveDebounced();
   }
 
-  void renameHeader(int index, String newName) {
+  void setHeader(int index, String text) {
     if (index < 0 || index >= headers.length) return;
-    headers[index] = newName.trim();
+    headers[index] = text;
     saveDebounced();
   }
 
@@ -148,7 +151,7 @@ class TableController {
   }
 }
 
-// -------------------- Grilla propia --------------------
+// -------------------- Grilla --------------------
 class Home extends StatefulWidget {
   const Home({super.key, required this.isLight, required this.onToggleTheme});
   final bool isLight;
@@ -161,11 +164,19 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   late final TableController ctrl;
 
-  // caches por celda
+  // Celdas
   final Map<String, TextEditingController> _ctls = {};
   final Map<String, FocusNode> _foci = {};
+
+  // Encabezados
+  final List<TextEditingController> _hdrCtls = [];
+  final List<FocusNode> _hdrFoci = [];
+
   bool zebra = true;
   bool showGridLines = true;
+
+  int _focusR = -1;
+  int _focusC = -1;
 
   static const double indexColW = 56;
   static const double colW = 180;
@@ -177,12 +188,15 @@ class _HomeState extends State<Home> {
     super.initState();
     ctrl = TableController();
     _syncFromModel();
+    _ensureHeaderControllers();
   }
 
   @override
   void dispose() {
     for (final c in _ctls.values) c.dispose();
     for (final f in _foci.values) f.dispose();
+    for (final c in _hdrCtls) c.dispose();
+    for (final f in _hdrFoci) f.dispose();
     super.dispose();
   }
 
@@ -198,12 +212,23 @@ class _HomeState extends State<Home> {
           if (ctl.text != text) ctl.text = text;
         } else {
           final ctl = TextEditingController(text: text);
-          ctl.addListener(() {
-            ctrl.setCell(r, c, ctl.text); // sin setState
-          });
+          ctl.addListener(() => ctrl.setCell(r, c, ctl.text));
           _ctls[key] = ctl;
         }
         _foci.putIfAbsent(key, () => FocusNode());
+      }
+    }
+  }
+
+  void _ensureHeaderControllers() {
+    for (int i = 0; i < ctrl.headers.length; i++) {
+      if (i >= _hdrCtls.length) {
+        final c = TextEditingController(text: ctrl.headers[i]);
+        c.addListener(() => ctrl.setHeader(i, c.text));
+        _hdrCtls.add(c);
+        _hdrFoci.add(FocusNode());
+      } else if (_hdrCtls[i].text != ctrl.headers[i]) {
+        _hdrCtls[i].text = ctrl.headers[i];
       }
     }
   }
@@ -214,29 +239,11 @@ class _HomeState extends State<Home> {
     _ctls.clear();
     _foci.clear();
     _syncFromModel();
+    _ensureHeaderControllers();
     setState(() {});
   }
 
-  Future<void> _renameHeader(int i) async {
-    final t = TextEditingController(text: ctrl.headers[i]);
-    final r = await showDialog<String>(context: context, builder: (ctx) {
-      return AlertDialog(
-        title: const Text('Renombrar columna'),
-        content: TextField(controller: t, autofocus: true),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
-          TextButton(onPressed: () => Navigator.pop(ctx, t.text.trim()), child: const Text('OK')),
-        ],
-      );
-    });
-    if (!mounted) return;
-    if (r != null && r.isNotEmpty) {
-      ctrl.renameHeader(i, r);
-      setState(() {}); // solo encabezado
-    }
-  }
-
-  void _onEnterMoveDown(int r, int c) {
+  void _ensureRowOnEnter(int r) {
     if (r == ctrl.rows.length - 1) {
       final anyFilled = ctrl.rows[r].any((v) => v.trim().isNotEmpty);
       if (anyFilled) {
@@ -245,15 +252,67 @@ class _HomeState extends State<Home> {
         setState(() {});
       }
     }
-    final nextKey = _k((r + 1).clamp(0, ctrl.rows.length - 1), c);
+  }
+
+  bool _shiftDown() {
+    final keys = HardwareKeyboard.instance.logicalKeysPressed;
+    return keys.contains(LogicalKeyboardKey.shiftLeft) ||
+        keys.contains(LogicalKeyboardKey.shiftRight);
+  }
+
+  void _moveFocus(int r, int c) {
+    _focusR = r.clamp(0, ctrl.rows.length - 1);
+    _focusC = c.clamp(0, ctrl.headers.length - 1);
+    final nextKey = _k(_focusR, _focusC);
     Future.microtask(() => _foci[nextKey]?.requestFocus());
   }
 
-  Widget _buildHeaderCell(String text, {bool index = false, VoidCallback? onRename}) {
+  bool _isNumericCol(int c) {
+    final h = ctrl.headers[c].toLowerCase();
+    if (h.trim().isEmpty) return c == 2 || c == 3;
+    return h.contains('ω') || h.contains('ohm') || h.contains('@1m') || h.contains('@3m');
+  }
+
+  KeyEventResult _handleKey(int r, int c, KeyEvent e) {
+    if (e is! KeyDownEvent) return KeyEventResult.ignored;
+
+    if (e.logicalKey == LogicalKeyboardKey.enter) {
+      _ensureRowOnEnter(r);
+      _moveFocus(r + 1, c);
+      return KeyEventResult.handled;
+    }
+    if (e.logicalKey == LogicalKeyboardKey.tab) {
+      final left = _shiftDown();
+      _moveFocus(r, c + (left ? -1 : 1));
+      return KeyEventResult.handled;
+    }
+    if (e.logicalKey == LogicalKeyboardKey.arrowDown) {
+      _ensureRowOnEnter(r);
+      _moveFocus(r + 1, c);
+      return KeyEventResult.handled;
+    }
+    if (e.logicalKey == LogicalKeyboardKey.arrowUp) {
+      _moveFocus(r - 1, c);
+      return KeyEventResult.handled;
+    }
+    if (e.logicalKey == LogicalKeyboardKey.arrowRight) {
+      _moveFocus(r, c + 1);
+      return KeyEventResult.handled;
+    }
+    if (e.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      _moveFocus(r, c - 1);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  // ---------- Celdas ----------
+  Widget _buildHeaderTextField(int c) {
+    final hintColor = Theme.of(context).textTheme.titleMedium?.color?.withOpacity(0.55);
     return Container(
       height: hdrH,
-      alignment: index ? Alignment.center : Alignment.centerLeft,
-      padding: EdgeInsets.symmetric(horizontal: index ? 0 : 12),
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: Theme.of(context).brightness == Brightness.light
             ? const Color(0xFFF9F9FB) : const Color(0xFF111827),
@@ -264,12 +323,19 @@ class _HomeState extends State<Home> {
         )
             : null,
       ),
-      child: index
-          ? Text(text, style: const TextStyle(fontWeight: FontWeight.w700))
-          : GestureDetector(
-        onDoubleTap: onRename,
-        onLongPress: onRename,
-        child: Text(text, style: const TextStyle(fontWeight: FontWeight.w700)),
+      child: TextField(
+        controller: _hdrCtls[c],
+        focusNode: _hdrFoci[c],
+        maxLines: 1,
+        textInputAction: TextInputAction.next,
+        decoration: InputDecoration(
+          isDense: true,
+          border: InputBorder.none,
+          hintText: 'Col ${c + 1}',
+          hintStyle: TextStyle(fontWeight: FontWeight.w600, color: hintColor),
+        ),
+        style: const TextStyle(fontWeight: FontWeight.w700),
+        onSubmitted: (_) => _moveFocus(0, c),
       ),
     );
   }
@@ -289,7 +355,7 @@ class _HomeState extends State<Home> {
         )
             : null,
       ),
-      child: Text('${r + 1}', style: const TextStyle(fontSize: 13.5)),
+      child: Text(header ? '#' : '${r + 1}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
     );
   }
 
@@ -298,6 +364,10 @@ class _HomeState extends State<Home> {
     final ctl = _ctls[key]!;
     final node = _foci[key]!;
     final bg = zebra && r.isEven ? const Color(0x0C000000) : Colors.transparent;
+
+    final inputFmt = _isNumericCol(c)
+        ? <TextInputFormatter>[FilteringTextInputFormatter.allow(RegExp(r'[0-9.,-]'))]
+        : const <TextInputFormatter>[];
 
     return Container(
       height: rowH,
@@ -314,18 +384,23 @@ class _HomeState extends State<Home> {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: TextField(
-          controller: ctl,
+        child: Focus(
           focusNode: node,
-          maxLines: 1,
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => _onEnterMoveDown(r, c),
-          decoration: const InputDecoration(
-            isDense: true,
-            border: InputBorder.none,
+          onFocusChange: (has) {
+            if (has) { _focusR = r; _focusC = c; }
+          },
+          onKeyEvent: (node, e) => _handleKey(r, c, e),
+          child: TextField(
+            controller: ctl,
+            maxLines: 1,
+            textInputAction: TextInputAction.done,
+            onTap: () { _focusR = r; _focusC = c; },
+            onSubmitted: (_) { _ensureRowOnEnter(r); _moveFocus(r + 1, c); },
+            inputFormatters: inputFmt,
+            decoration: const InputDecoration(isDense: true, border: InputBorder.none),
+            style: const TextStyle(fontSize: 13.5),
+            cursorWidth: 1.2,
           ),
-          style: const TextStyle(fontSize: 13.5),
-          cursorWidth: 1.2,
         ),
       ),
     );
@@ -339,9 +414,7 @@ class _HomeState extends State<Home> {
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.8)),
-        boxShadow: [
-          if (light) const BoxShadow(blurRadius: 20, offset: Offset(0, 10), color: Color(0x15000000)),
-        ],
+        boxShadow: [if (light) const BoxShadow(blurRadius: 20, offset: Offset(0, 10), color: Color(0x15000000))],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
@@ -350,23 +423,14 @@ class _HomeState extends State<Home> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
               Row(
                 children: [
-                  _buildHeaderCell('#', index: true),
+                  _buildIndexCell(0, header: true),
                   for (int c = 0; c < ctrl.headers.length; c++)
-                    SizedBox(
-                      width: colW,
-                      child: _buildHeaderCell(
-                        ctrl.headers[c],
-                        onRename: () => _renameHeader(c),
-                      ),
-                    ),
+                    SizedBox(width: colW, child: _buildHeaderTextField(c)),
                 ],
               ),
               const Divider(height: 0, thickness: 0),
-
-              // Body (sin Expanded)
               SizedBox(
                 height: 420,
                 child: ListView.builder(
@@ -399,9 +463,7 @@ class _HomeState extends State<Home> {
     );
   }
 
-  Future<void> _backupDownload() async {
-    LocalStore.downloadBackup(ctrl.toState());
-  }
+  Future<void> _backupDownload() async => LocalStore.downloadBackup(ctrl.toState());
 
   Future<void> _backupImport() async {
     final ts = await LocalStore.importBackup();
@@ -416,13 +478,26 @@ class _HomeState extends State<Home> {
     return Shortcuts(
       shortcuts: <LogicalKeySet, Intent>{
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyN): const _AddRowIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyE): const _ExportIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyB): const _BackupIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyU): const _ImportIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyL): const _ClearIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyD): const _DeleteRowIntent(),
       },
       child: Actions(
         actions: <Type, Action<Intent>>{
-          _AddRowIntent: CallbackAction<_AddRowIntent>(onInvoke: (intent) {
-            ctrl.addRow();
-            _syncFromModel();
-            setState(() {});
+          _AddRowIntent: CallbackAction<_AddRowIntent>(onInvoke: (intent) { ctrl.addRow(); _syncFromModel(); setState(() {}); return null; }),
+          _ExportIntent: CallbackAction<_ExportIntent>(onInvoke: (intent) { _exportXlsx(); return null; }),
+          _BackupIntent: CallbackAction<_BackupIntent>(onInvoke: (intent) { _backupDownload(); return null; }),
+          _ImportIntent: CallbackAction<_ImportIntent>(onInvoke: (intent) async { await _backupImport(); return null; }),
+          _ClearIntent: CallbackAction<_ClearIntent>(onInvoke: (intent) { ctrl.clearAll(); _rebuildAllControllers(); return null; }),
+          _DeleteRowIntent: CallbackAction<_DeleteRowIntent>(onInvoke: (intent) {
+            if (_focusR >= 0) {
+              ctrl.removeRow(_focusR);
+              _rebuildAllControllers();
+              final r = (_focusR - 1).clamp(0, ctrl.rows.length - 1);
+              _moveFocus(r, _focusC < 0 ? 0 : _focusC);
+            }
             return null;
           }),
         },
@@ -450,10 +525,7 @@ class _HomeState extends State<Home> {
                                 const Spacer(),
                                 IconButton(
                                   tooltip: widget.isLight ? 'Cambiar a oscuro' : 'Cambiar a claro',
-                                  onPressed: () {
-                                    widget.onToggleTheme();
-                                    Navigator.pop(ctx);
-                                  },
+                                  onPressed: () { widget.onToggleTheme(); Navigator.pop(ctx); },
                                   icon: Icon(widget.isLight ? Icons.dark_mode : Icons.light_mode),
                                 ),
                               ],
@@ -487,33 +559,26 @@ class _HomeState extends State<Home> {
               const SizedBox(width: 8),
               IconButton(
                 tooltip: 'Agregar fila (Ctrl+N)',
-                onPressed: () {
-                  ctrl.addRow();
-                  _syncFromModel();
-                  setState(() {});
-                },
+                onPressed: () { ctrl.addRow(); _syncFromModel(); setState(() {}); },
                 icon: const Icon(Icons.add),
               ),
               IconButton(
-                tooltip: 'Limpiar',
-                onPressed: () {
-                  ctrl.clearAll();
-                  _rebuildAllControllers();
-                },
+                tooltip: 'Limpiar (Ctrl+L)',
+                onPressed: () { ctrl.clearAll(); _rebuildAllControllers(); },
                 icon: const Icon(Icons.delete_sweep),
               ),
               IconButton(
-                tooltip: 'Backup JSON',
+                tooltip: 'Backup JSON (Ctrl+B)',
                 onPressed: _backupDownload,
                 icon: const Icon(Icons.download),
               ),
               IconButton(
-                tooltip: 'Importar JSON',
+                tooltip: 'Importar JSON (Ctrl+U)',
                 onPressed: _backupImport,
                 icon: const Icon(Icons.upload_file),
               ),
               IconButton(
-                tooltip: 'Exportar XLSX',
+                tooltip: 'Exportar XLSX (Ctrl+E)',
                 onPressed: _exportXlsx,
                 icon: const Icon(Icons.file_download),
               ),
@@ -536,18 +601,18 @@ class _HomeState extends State<Home> {
   }
 }
 
-class _AddRowIntent extends Intent {
-  const _AddRowIntent();
-}
+class _AddRowIntent extends Intent { const _AddRowIntent(); }
+class _ExportIntent extends Intent { const _ExportIntent(); }
+class _BackupIntent extends Intent { const _BackupIntent(); }
+class _ImportIntent extends Intent { const _ImportIntent(); }
+class _ClearIntent extends Intent { const _ClearIntent(); }
+class _DeleteRowIntent extends Intent { const _DeleteRowIntent(); }
 
 // --- Util ---
 class Debouncer {
   Debouncer(this.duration);
   final Duration duration;
   Timer? _t;
-  void call(void Function() action) {
-    _t?.cancel();
-    _t = Timer(duration, action);
-  }
+  void call(void Function() action) { _t?.cancel(); _t = Timer(duration, action); }
   void dispose() => _t?.cancel();
 }
