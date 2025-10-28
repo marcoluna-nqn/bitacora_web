@@ -6,6 +6,7 @@
 import 'dart:async' show Timer;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:bitacora_web/models/table_state.dart';
 
 import 'package:bitacora_web/services/local_store.dart';
 import 'package:bitacora_web/services/export_xlsx_service.dart';
@@ -616,3 +617,4 @@ class Debouncer {
   void call(void Function() action) { _t?.cancel(); _t = Timer(duration, action); }
   void dispose() => _t?.cancel();
 }
+
