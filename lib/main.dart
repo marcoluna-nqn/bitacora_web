@@ -1,6 +1,6 @@
 ﻿// lib/main.dart
 // Bitácora Web — Grilla editable con autosave, backup/import JSON y export XLSX.
-// Atajos: Ctrl+N (fila), Ctrl+E (XLSX), Ctrl+B (backup), Ctrl+U (import), Ctrl+L (limpiar), Ctrl+D (borrar fila).
+// Atajos: Ctrl+N (fila) | Ctrl+E (XLSX) | Ctrl+B (backup) | Ctrl+U (import) | Ctrl+L (limpiar) | Ctrl+D (borrar fila)
 
 import 'dart:async' show Timer;
 import 'package:flutter/material.dart';
@@ -170,7 +170,7 @@ class _HomeState extends State<Home> {
   final List<TextEditingController> _hdrCtls = [];
   final List<FocusNode> _hdrFoci = [];
 
-  // Tipado por columna. false=text, true=number. Por defecto todo texto.
+  // false = texto, true = numérico
   late List<bool> numericCols;
 
   bool zebra = true;
@@ -446,39 +446,40 @@ class _HomeState extends State<Home> {
         borderRadius: BorderRadius.circular(14),
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          child: SizedBox(
-            width: tableW,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    _buildIndexCell(0, header: true),
-                    for (int c = 0; c < ctrl.headers.length; c++)
-                      _buildHeaderCell(c),
-                  ],
-                ),
-                const Divider(height: 0, thickness: 0),
-                SizedBox(
-                  height: 420,
-                  child: ListView.builder(
-                    padding: EdgeInsets.zero,
-                    itemExtent: rowH,
-                    itemCount: ctrl.rows.length,
-                    physics: const ClampingScrollPhysics(),
-                    shrinkWrap: true,
-                    primary: false,
-                    itemBuilder: (context, r) {
-                      return Row(
-                        children: [
-                          _buildIndexCell(r),
-                          for (int c = 0; c < ctrl.headers.length; c++) _buildCell(r, c),
-                        ],
-                      );
-                    },
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 0),
+            child: SizedBox(
+              width: tableW,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      _buildIndexCell(0, header: true),
+                      for (int c = 0; c < ctrl.headers.length; c++) _buildHeaderCell(c),
+                    ],
                   ),
-                ),
-              ],
+                  const Divider(height: 0, thickness: 0),
+                  // Ocupa toda la altura disponible
+                  Expanded(
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemExtent: rowH,
+                      itemCount: ctrl.rows.length,
+                      physics: const ClampingScrollPhysics(),
+                      primary: false,
+                      itemBuilder: (context, r) {
+                        return Row(
+                          children: [
+                            _buildIndexCell(r),
+                            for (int c = 0; c < ctrl.headers.length; c++) _buildCell(r, c),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -499,6 +500,9 @@ class _HomeState extends State<Home> {
 
   @override
   Widget build(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    final isNarrow = w < 680;
+
     return Shortcuts(
       shortcuts: <LogicalKeySet, Intent>{
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyN): const _AddRowIntent(),
@@ -611,14 +615,21 @@ class _HomeState extends State<Home> {
               ],
             ),
             body: SafeArea(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1200),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: _grid(),
-                  ),
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Center(
+                    child: ConstrainedBox(
+                      constraints: isNarrow ? const BoxConstraints() : const BoxConstraints(maxWidth: 1200),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: SizedBox(
+                          height: constraints.maxHeight - 32, // ocupa alto disponible
+                          child: _grid(),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),
