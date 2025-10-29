@@ -1,4 +1,6 @@
-﻿import 'export_xlsx_service_web.dart'
+﻿// lib/services/export_xlsx_service.dart
+// En web usa export_xlsx_service_web.dart; en runtimes con dart:io usa export_xlsx_service_io.dart.
+import 'export_xlsx_service_web.dart'
 if (dart.library.io) 'export_xlsx_service_io.dart' as platform;
 
 class ExportXlsxService {
