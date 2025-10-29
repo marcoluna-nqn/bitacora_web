@@ -15,7 +15,7 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # Utilidades base
-  intl: ^0.20.2            # Fechas, números y formatos locales
+  intl: 0.20.2            # Fechas, números y formatos locales
   collection: ^1.18.0      # Helpers de listas y mapas
 
   # Navegación escalable
@@ -29,7 +29,7 @@ dependencies:
   hive_flutter: ^1.1.0
 
   # Exportación y archivos
-  syncfusion_flutter_xlsio: ^31.2.3
+  syncfusion_flutter_xlsio: 31.2.3
   file_selector: ^1.0.4
   file_saver: ^0.3.1        # Útil para desktop; en web ya usamos Blob
 
