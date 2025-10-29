@@ -1,4 +1,4 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xls;
 import 'export_xlsx_saver_stub.dart'
   if (dart.library.html) 'export_xlsx_saver_web.dart';
@@ -53,7 +53,7 @@ class ExportXlsxService {
     if (saneRows.isNotEmpty) {
       sheet.getRangeByIndex(2, 1, saneRows.length + 1, colCount).cellStyle = bodyStyle;
     }
-    sheet.autoFitColumns();
+    sheet.getRangeByIndex(1, 1, saneRows.length + 1, colCount).autoFitColumns();
 
     final bytes = Uint8List.fromList(book.saveAsStream());
     book.dispose();

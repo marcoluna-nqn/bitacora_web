@@ -1,5 +1,5 @@
-Ôªø// lib/main.dart
-// Bit√°cora Web ‚Äî Inicio + Editor.
+// lib/main.dart
+// Bit·cora Web ó Inicio + Editor.
 // Inicio: lista local de planillas (recientes primero), crear, renombrar, borrar.
 // Editor: grilla editable con autosave local por planilla, backup/import JSON y export XLSX.
 // UX editor: Enter baja, Shift+Enter sube, Tab/Shift+Tab lateral. Escribir tras moverse empieza a editar.
@@ -76,7 +76,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Bit√°cora Web',
+      title: 'Bit·cora Web',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(true),
       darkTheme: _buildTheme(false),
@@ -137,7 +137,7 @@ class SheetStore {
     _saveIndex(idx);
 
     final initial = {
-      'headers': List<String>.filled(5, ''), // encabezados vac√≠os por defecto
+      'headers': List<String>.filled(5, ''), // encabezados vacÌos por defecto
       'rows': List.generate(3, (_) => List<String>.filled(5, '')),
       'savedAt': DateTime.now().toIso8601String(),
     };
@@ -190,7 +190,7 @@ class SheetStore {
   }
 }
 
-// -------------------- P√°gina de inicio --------------------
+// -------------------- P·gina de inicio --------------------
 class StartPage extends StatefulWidget {
   const StartPage({super.key, required this.isLight, required this.onToggleTheme});
   final bool isLight;
@@ -230,7 +230,7 @@ class _StartPageState extends State<StartPage> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Renombrar planilla'),
-        content: TextField(controller: t, decoration: const InputDecoration(labelText: 'T√≠tulo')),
+        content: TextField(controller: t, decoration: const InputDecoration(labelText: 'TÌtulo')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           FilledButton(onPressed: () => Navigator.pop(context, t.text.trim()), child: const Text('Guardar')),
@@ -260,7 +260,7 @@ class _StartPageState extends State<StartPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Bit√°cora Web'),
+        title: const Text('Bit·cora Web'),
         actions: [
           IconButton(
             tooltip: widget.isLight ? 'Cambiar a oscuro' : 'Cambiar a claro',
@@ -311,7 +311,7 @@ class _StartPageState extends State<StartPage> {
                   onChanged: (v) => setState(() => _q = v),
                   decoration: const InputDecoration(
                     prefixIcon: Icon(Icons.search),
-                    hintText: 'Buscar planilla‚Ä¶',
+                    hintText: 'Buscar planillaÖ',
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -329,7 +329,7 @@ class _StartPageState extends State<StartPage> {
                       context: context,
                       builder: (_) => AlertDialog(
                         title: const Text('Eliminar'),
-                        content: const Text('¬øEliminar esta planilla? Esta acci√≥n no se puede deshacer.'),
+                        content: const Text('øEliminar esta planilla? Esta acciÛn no se puede deshacer.'),
                         actions: [
                           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
                           FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Eliminar')),
@@ -365,12 +365,12 @@ class _StartPageState extends State<StartPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    m.title.isEmpty ? 'Planilla sin t√≠tulo' : m.title,
+                                    m.title.isEmpty ? 'Planilla sin tÌtulo' : m.title,
                                     style: const TextStyle(fontWeight: FontWeight.w700),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 2),
-                                  Text('${m.rows} filas ¬∑ ${_fmt(m.updatedAt)}',
+                                  Text('${m.rows} filas ∑ ${_fmt(m.updatedAt)}',
                                       style: Theme.of(context).textTheme.bodySmall),
                                 ],
                               ),
@@ -429,7 +429,7 @@ class TableController {
       headers = List<String>.from(initial.headers);
       rows = initial.rows.map((r) => _padRow(r)).toList(growable: true);
     } else {
-      headers = List<String>.filled(defaultCols, ''); // encabezados vac√≠os por defecto
+      headers = List<String>.filled(defaultCols, ''); // encabezados vacÌos por defecto
       rows = List<List<String>>.generate(3, (_) => List<String>.filled(headers.length, ''));
     }
   }
@@ -721,7 +721,7 @@ class _EditorScreenState extends State<EditorScreen> {
       if (ctl != null) {
         ctl.selection = TextSelection.collapsed(offset: ctl.text.length);
       }
-      _firstCharReplace[nextKey] = true; // pr√≥xima tecla imprimible reemplaza
+      _firstCharReplace[nextKey] = true; // prÛxima tecla imprimible reemplaza
       _ensureVisible(_focusR, _focusC);
       setState(() {});
     });
@@ -744,7 +744,7 @@ class _EditorScreenState extends State<EditorScreen> {
   KeyEventResult _handleKey(int r, int c, KeyEvent e) {
     if (e is! KeyDownEvent) return KeyEventResult.ignored;
 
-    // Primer car√°cter al llegar con teclado: reemplaza contenido y sigue editando
+    // Primer car·cter al llegar con teclado: reemplaza contenido y sigue editando
     if (_isPrintable(e)) {
       final key = _k(r, c);
       if (_firstCharReplace[key] == true) {
@@ -761,7 +761,7 @@ class _EditorScreenState extends State<EditorScreen> {
       return KeyEventResult.ignored; // deja que el TextField reciba el resto
     }
 
-    // Navegaci√≥n tipo planilla
+    // NavegaciÛn tipo planilla
     if (e.logicalKey == LogicalKeyboardKey.enter || e.logicalKey == LogicalKeyboardKey.numpadEnter) {
       if (_shiftDown()) {
         _moveFocus(r - 1, c);
@@ -829,7 +829,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   Expanded(
                     child: TextField(
                       controller: _hdrCtls[c],
-                      focusNode: _hdrFoci[c],
+
                       maxLines: 1,
                       textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
@@ -940,7 +940,7 @@ class _EditorScreenState extends State<EditorScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Focus(
-            focusNode: node,
+
             onFocusChange: (has) {
               if (has) {
                 _focusR = r;
@@ -965,7 +965,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   onTap: () {
                     _focusR = r;
                     _focusC = c;
-                    _firstCharReplace[key] = false; // si clic, edici√≥n normal
+                    _firstCharReplace[key] = false; // si clic, ediciÛn normal
                     setState(() {});
                   },
                   onSubmitted: (_) {
@@ -986,7 +986,7 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  // ---------- Layout con √≠ndice fijo y scroll horizontal ----------
+  // ---------- Layout con Ìndice fijo y scroll horizontal ----------
   double _sumWidthUntil(int c) {
     double s = 0;
     for (int i = 0; i < c; i++) { s += colWidths[i]; }
@@ -1086,7 +1086,7 @@ class _EditorScreenState extends State<EditorScreen> {
           content: TextField(
             controller: t,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'N√∫mero de fila'),
+            decoration: const InputDecoration(labelText: 'N˙mero de fila'),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
@@ -1297,7 +1297,7 @@ class Debouncer {
 // --- Export XLSX ---
 Future<void> _exportXlsxImpl(List<String> headers, List<List<String>> rows) {
   return ExportXlsxService.download(
-    filename: 'bitacora.xlsx',
+    fileName: 'bitacora.xlsx',
     headers: headers,
     rows: rows.map((r) => r.map((e) => e.toString()).toList()).toList(),
   );
