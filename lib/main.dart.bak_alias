@@ -1,15 +1,17 @@
-﻿// lib/main.dart
+﻿import 'package:file_saver/file_saver.dart';
+import 'package:excel/excel.dart' as xcel;
+import 'dart:typed_data';
+// lib/main.dart
 // Bitácora Web — Grilla editable con autosave, backup/import JSON y export XLSX.
+// Encabezados editables (vacíos por defecto). Navegación con flechas/Tab/Enter.
 // Atajos: Ctrl+N (fila), Ctrl+E (XLSX), Ctrl+B (backup), Ctrl+U (import), Ctrl+L (limpiar), Ctrl+D (borrar fila).
 
 import 'dart:async' show Timer;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:bitacora_web/models/table_state.dart';
 
-import 'models/table_state.dart';
-import 'services/local_store.dart';
-import 'services/export_xlsx_service.dart';
-
+import 'package:bitacora_web/services/local_store.dart';
 void main() => runApp(const MyApp());
 
 // -------------------- APP y tema --------------------
@@ -85,7 +87,7 @@ class TableController {
       headers = List<String>.from(loaded.headers);
       rows = loaded.rows.map((r) => _padRow(r)).toList(growable: true);
     } else {
-      headers = List<String>.filled(defaultCols, '');
+      headers = List<String>.filled(defaultCols, ''); // VACÍOS por defecto
       rows = List<List<String>>.generate(3, (_) => List<String>.filled(headers.length, ''));
     }
   }
@@ -164,14 +166,13 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   late final TableController ctrl;
 
+  // Celdas
   final Map<String, TextEditingController> _ctls = {};
   final Map<String, FocusNode> _foci = {};
 
+  // Encabezados
   final List<TextEditingController> _hdrCtls = [];
   final List<FocusNode> _hdrFoci = [];
-
-  // Tipado por columna. false=text, true=number. Por defecto todo texto.
-  late List<bool> numericCols;
 
   bool zebra = true;
   bool showGridLines = true;
@@ -183,22 +184,22 @@ class _HomeState extends State<Home> {
   static const double colW = 180;
   static const double rowH = 38;
   static const double hdrH = 42;
+  double get _tableW => indexColW + ctrl.headers.length * colW;
 
   @override
   void initState() {
     super.initState();
     ctrl = TableController();
-    numericCols = List<bool>.filled(ctrl.headers.length, false);
     _syncFromModel();
     _ensureHeaderControllers();
   }
 
   @override
   void dispose() {
-    for (final c in _ctls.values) { c.dispose(); }
-    for (final f in _foci.values) { f.dispose(); }
-    for (final c in _hdrCtls) { c.dispose(); }
-    for (final f in _hdrFoci) { f.dispose(); }
+    for (final c in _ctls.values) c.dispose();
+    for (final f in _foci.values) f.dispose();
+    for (final c in _hdrCtls) c.dispose();
+    for (final f in _hdrFoci) f.dispose();
     super.dispose();
   }
 
@@ -223,26 +224,25 @@ class _HomeState extends State<Home> {
   }
 
   void _ensureHeaderControllers() {
-    for (final c in _hdrCtls) { c.dispose(); }
-    for (final f in _hdrFoci) { f.dispose(); }
-    _hdrCtls.clear();
-    _hdrFoci.clear();
     for (int i = 0; i < ctrl.headers.length; i++) {
-      final c = TextEditingController(text: ctrl.headers[i]);
-      c.addListener(() => ctrl.setHeader(i, c.text));
-      _hdrCtls.add(c);
-      _hdrFoci.add(FocusNode());
+      if (i >= _hdrCtls.length) {
+        final c = TextEditingController(text: ctrl.headers[i]);
+        c.addListener(() => ctrl.setHeader(i, c.text));
+        _hdrCtls.add(c);
+        _hdrFoci.add(FocusNode());
+      } else if (_hdrCtls[i].text != ctrl.headers[i]) {
+        _hdrCtls[i].text = ctrl.headers[i];
+      }
     }
   }
 
   void _rebuildAllControllers() {
-    for (final c in _ctls.values) { c.dispose(); }
-    for (final f in _foci.values) { f.dispose(); }
+    for (final c in _ctls.values) c.dispose();
+    for (final f in _foci.values) f.dispose();
     _ctls.clear();
     _foci.clear();
     _syncFromModel();
     _ensureHeaderControllers();
-    if (!mounted) return;
     setState(() {});
   }
 
@@ -252,7 +252,6 @@ class _HomeState extends State<Home> {
       if (anyFilled) {
         ctrl.addRow();
         _syncFromModel();
-        if (!mounted) return;
         setState(() {});
       }
     }
@@ -269,6 +268,12 @@ class _HomeState extends State<Home> {
     _focusC = c.clamp(0, ctrl.headers.length - 1);
     final nextKey = _k(_focusR, _focusC);
     Future.microtask(() => _foci[nextKey]?.requestFocus());
+  }
+
+  bool _isNumericCol(int c) {
+    final h = ctrl.headers[c].toLowerCase();
+    if (h.trim().isEmpty) return c == 2 || c == 3;
+    return h.contains('ω') || h.contains('ohm') || h.contains('@1m') || h.contains('@3m');
   }
 
   KeyEventResult _handleKey(int r, int c, KeyEvent e) {
@@ -305,60 +310,35 @@ class _HomeState extends State<Home> {
   }
 
   // ---------- Celdas ----------
-  Widget _buildHeaderCell(int c) {
+  Widget _buildHeaderTextField(int c) {
     final hintColor = Theme.of(context).textTheme.titleMedium?.color?.withOpacity(0.55);
-    final bg = Theme.of(context).brightness == Brightness.light
-        ? const Color(0xFFF9F9FB) : const Color(0xFF111827);
-
-    return SizedBox(
-      width: colW,
+    return Container(
       height: hdrH,
-      child: Container(
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: bg,
-          border: showGridLines
-              ? Border(
-            bottom: BorderSide(color: Theme.of(context).dividerColor),
-            right: BorderSide(color: Theme.of(context).dividerColor),
-          )
-              : null,
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.light
+            ? const Color(0xFFF9F9FB) : const Color(0xFF111827),
+        border: showGridLines
+            ? Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+          right: BorderSide(color: Theme.of(context).dividerColor),
+        )
+            : null,
+      ),
+      child: TextField(
+        controller: _hdrCtls[c],
+        focusNode: _hdrFoci[c],
+        maxLines: 1,
+        textInputAction: TextInputAction.next,
+        decoration: InputDecoration(
+          isDense: true,
+          border: InputBorder.none,
+          hintText: 'Col ${c + 1}',
+          hintStyle: TextStyle(fontWeight: FontWeight.w600, color: hintColor),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _hdrCtls[c],
-                focusNode: _hdrFoci[c],
-                maxLines: 1,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  isDense: true,
-                  border: InputBorder.none,
-                  hintText: 'Col ${c + 1}',
-                  hintStyle: TextStyle(fontWeight: FontWeight.w600, color: hintColor),
-                ),
-                style: const TextStyle(fontWeight: FontWeight.w700),
-                onSubmitted: (_) => _moveFocus(0, c),
-              ),
-            ),
-            InkWell(
-              onTap: () => setState(() => numericCols[c] = !numericCols[c]),
-              borderRadius: BorderRadius.circular(6),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                child: Text(
-                  numericCols[c] ? '123' : 'Aa',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: numericCols[c] ? Colors.blue : Theme.of(context).textTheme.bodyMedium?.color,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+        style: const TextStyle(fontWeight: FontWeight.w700),
+        onSubmitted: (_) => _moveFocus(0, c),
       ),
     );
   }
@@ -388,50 +368,48 @@ class _HomeState extends State<Home> {
     final node = _foci[key]!;
     final bg = zebra && r.isEven ? const Color(0x0C000000) : Colors.transparent;
 
-    final inputFmt = numericCols[c]
+    final inputFmt = _isNumericCol(c)
         ? <TextInputFormatter>[FilteringTextInputFormatter.allow(RegExp(r'[0-9.,-]'))]
         : const <TextInputFormatter>[];
 
-    return SizedBox(
+    return Container(
       height: rowH,
       width: colW,
-      child: Container(
-        alignment: Alignment.centerLeft,
-        decoration: BoxDecoration(
-          color: bg,
-          border: showGridLines
-              ? Border(
-            bottom: BorderSide(color: Theme.of(context).dividerColor),
-            right: BorderSide(color: Theme.of(context).dividerColor),
-          )
-              : null,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Focus(
-            focusNode: node,
-            onFocusChange: (has) {
-              if (has) { _focusR = r; _focusC = c; }
-            },
-            onKeyEvent: (node, e) => _handleKey(r, c, e),
-            child: TextField(
-              controller: ctl,
-              maxLines: 1,
-              textInputAction: TextInputAction.done,
-              onTap: () { _focusR = r; _focusC = c; },
-              onSubmitted: (_) { _ensureRowOnEnter(r); _moveFocus(r + 1, c); },
-              inputFormatters: inputFmt,
-              decoration: const InputDecoration(isDense: true, border: InputBorder.none),
-              style: const TextStyle(fontSize: 13.5),
-              cursorWidth: 1.2,
-            ),
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        color: bg,
+        border: showGridLines
+            ? Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+          right: BorderSide(color: Theme.of(context).dividerColor),
+        )
+            : null,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Focus(
+          focusNode: node,
+          onFocusChange: (has) {
+            if (has) { _focusR = r; _focusC = c; }
+          },
+          onKeyEvent: (node, e) => _handleKey(r, c, e),
+          child: TextField(
+            controller: ctl,
+            maxLines: 1,
+            textInputAction: TextInputAction.done,
+            onTap: () { _focusR = r; _focusC = c; },
+            onSubmitted: (_) { _ensureRowOnEnter(r); _moveFocus(r + 1, c); },
+            inputFormatters: inputFmt,
+            decoration: const InputDecoration(isDense: true, border: InputBorder.none),
+            style: const TextStyle(fontSize: 13.5),
+            cursorWidth: 1.2,
           ),
         ),
       ),
     );
   }
 
-  Widget _grid() {
+        Widget _grid() {
     final light = Theme.of(context).brightness == Brightness.light;
     final tableW = indexColW + ctrl.headers.length * colW;
 
@@ -455,7 +433,7 @@ class _HomeState extends State<Home> {
                   children: [
                     _buildIndexCell(0, header: true),
                     for (int c = 0; c < ctrl.headers.length; c++)
-                      _buildHeaderCell(c),
+                      SizedBox(width: colW, child: _buildHeaderTextField(c)),
                   ],
                 ),
                 const Divider(height: 0, thickness: 0),
@@ -485,7 +463,6 @@ class _HomeState extends State<Home> {
       ),
     );
   }
-
   Future<void> _backupDownload() async => LocalStore.downloadBackup(ctrl.toState());
 
   Future<void> _backupImport() async {
@@ -493,7 +470,6 @@ class _HomeState extends State<Home> {
     if (ts == null) return;
     ctrl.headers = List<String>.from(ts.headers);
     ctrl.rows = ts.rows.map((r) => List<String>.from(r)).toList(growable: true);
-    numericCols = List<bool>.filled(ctrl.headers.length, false);
     _rebuildAllControllers();
   }
 
@@ -525,99 +501,96 @@ class _HomeState extends State<Home> {
             return null;
           }),
         },
-        child: Focus(
-          autofocus: true,
-          child: Scaffold(
-            appBar: AppBar(
-              title: const Text('Bitácora Web'),
-              actions: [
-                IconButton(
-                  tooltip: 'Preferencias',
-                  onPressed: () {
-                    showModalBottomSheet(
-                      context: context,
-                      useSafeArea: true,
-                      showDragHandle: true,
-                      builder: (ctx) {
-                        return Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Row(
-                                children: [
-                                  const Text('Apariencia', style: TextStyle(fontWeight: FontWeight.w700)),
-                                  const Spacer(),
-                                  IconButton(
-                                    tooltip: widget.isLight ? 'Cambiar a oscuro' : 'Cambiar a claro',
-                                    onPressed: () { widget.onToggleTheme(); Navigator.pop(ctx); },
-                                    icon: Icon(widget.isLight ? Icons.dark_mode : Icons.light_mode),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              SwitchListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: const Text('Rayado alterno de filas'),
-                                value: zebra,
-                                onChanged: (v) => setState(() => zebra = v),
-                              ),
-                              SwitchListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: const Text('Líneas de grilla'),
-                                value: showGridLines,
-                                onChanged: (v) => setState(() => showGridLines = v),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                  },
-                  icon: const Icon(Icons.tune),
-                ),
-                IconButton(
-                  tooltip: 'Tema',
-                  onPressed: widget.onToggleTheme,
-                  icon: Icon(widget.isLight ? Icons.dark_mode : Icons.light_mode),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  tooltip: 'Agregar fila (Ctrl+N)',
-                  onPressed: () { ctrl.addRow(); _syncFromModel(); setState(() {}); },
-                  icon: const Icon(Icons.add),
-                ),
-                IconButton(
-                  tooltip: 'Limpiar (Ctrl+L)',
-                  onPressed: () { ctrl.clearAll(); _rebuildAllControllers(); },
-                  icon: const Icon(Icons.delete_sweep),
-                ),
-                IconButton(
-                  tooltip: 'Backup JSON (Ctrl+B)',
-                  onPressed: _backupDownload,
-                  icon: const Icon(Icons.download),
-                ),
-                IconButton(
-                  tooltip: 'Importar JSON (Ctrl+U)',
-                  onPressed: _backupImport,
-                  icon: const Icon(Icons.upload_file),
-                ),
-                IconButton(
-                  tooltip: 'Exportar XLSX (Ctrl+E)',
-                  onPressed: () => _exportXlsxImpl(ctrl.headers, ctrl.rows),
-                  icon: const Icon(Icons.file_download),
-                ),
-              ],
-            ),
-            body: SafeArea(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1200),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: _grid(),
-                  ),
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Bitácora Web'),
+            actions: [
+              IconButton(
+                tooltip: 'Preferencias',
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    useSafeArea: true,
+                    showDragHandle: true,
+                    builder: (ctx) {
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              children: [
+                                const Text('Apariencia', style: TextStyle(fontWeight: FontWeight.w700)),
+                                const Spacer(),
+                                IconButton(
+                                  tooltip: widget.isLight ? 'Cambiar a oscuro' : 'Cambiar a claro',
+                                  onPressed: () { widget.onToggleTheme(); Navigator.pop(ctx); },
+                                  icon: Icon(widget.isLight ? Icons.dark_mode : Icons.light_mode),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Rayado alterno de filas'),
+                              value: zebra,
+                              onChanged: (v) => setState(() => zebra = v),
+                            ),
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Líneas de grilla'),
+                              value: showGridLines,
+                              onChanged: (v) => setState(() => showGridLines = v),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+                icon: const Icon(Icons.tune),
+              ),
+              IconButton(
+                tooltip: 'Tema',
+                onPressed: widget.onToggleTheme,
+                icon: Icon(widget.isLight ? Icons.dark_mode : Icons.light_mode),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: 'Agregar fila (Ctrl+N)',
+                onPressed: () { ctrl.addRow(); _syncFromModel(); setState(() {}); },
+                icon: const Icon(Icons.add),
+              ),
+              IconButton(
+                tooltip: 'Limpiar (Ctrl+L)',
+                onPressed: () { ctrl.clearAll(); _rebuildAllControllers(); },
+                icon: const Icon(Icons.delete_sweep),
+              ),
+              IconButton(
+                tooltip: 'Backup JSON (Ctrl+B)',
+                onPressed: _backupDownload,
+                icon: const Icon(Icons.download),
+              ),
+              IconButton(
+                tooltip: 'Importar JSON (Ctrl+U)',
+                onPressed: _backupImport,
+                icon: const Icon(Icons.upload_file),
+              ),
+              IconButton(
+                tooltip: 'Exportar XLSX (Ctrl+E)',
+                onPressed: () => _exportXlsxImpl(ctrl.headers, ctrl.rows),
+                icon: const Icon(Icons.file_download),
+              ),
+            ],
+          ),
+          body: SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1200),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: _grid(),
                 ),
               ),
             ),
@@ -644,11 +617,30 @@ class Debouncer {
   void dispose() => _t?.cancel();
 }
 
-// --- Export XLSX ---
-Future<void> _exportXlsxImpl(List<String> headers, List<List<String>> rows) {
-  return ExportXlsxService.download(
-    filename: 'bitacora.xlsx',
-    headers: headers,
-    rows: rows.map((r) => r.map((e) => e.toString()).toList()).toList(),
+
+
+
+
+
+
+
+
+
+
+
+
+Future<void> _exportXlsxImpl(List<String> headers, List<List<dynamic>> rows) async {
+  final book = xcel.xcel.Excel.createExcel();
+  final sheet = book['Bitacora'];
+  sheet.appendRow((['#', ...headers]).cast<xcel.CellValue?>());
+  for (var r = 0; r < rows.length; r++) {
+    sheet.appendRow(([r + 1, ...rows[r]]).cast<xcel.CellValue?>());
+  }
+  final bytes = book.encode()!;
+  await FileSaver.instance.saveFile(
+    name: 'bitacora',
+    ext: 'xlsx',
+    mimeType: MimeType.microsoftExcel,
+    bytes: Uint8List.fromList(bytes),
   );
 }

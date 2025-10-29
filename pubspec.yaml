@@ -17,18 +17,19 @@ dependencies:
   syncfusion_flutter_xlsio: ^31.2.3
 
   # Animaciones y micro-interacciones
-  flutter_animate: ^4.5.0      # animaciones declarativas, rápidas y sin dolor
-  animations: ^2.0.11          # transiciones Material de alto nivel
-  lottie: ^3.1.2               # animaciones vectoriales ligeras (opcional)
+  flutter_animate: ^4.5.0
+  animations: ^2.0.11
+  lottie: ^3.1.2
 
-  # Estado performante
+  # Estado y utilidades
   flutter_hooks: ^0.20.5
   hooks_riverpod: ^2.5.1
   share_plus: ^12.0.1
   path_provider: ^2.1.5
   file_selector: ^1.0.4
-  shared_preferences: ^2.5.3
+  shared_preferences: ^2.3.2
   cross_file: ^0.3.4+2
+  file_saver: 0.2.12
 
 dev_dependencies:
   flutter_test:
