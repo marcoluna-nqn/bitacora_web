@@ -14,9 +14,10 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: '3.35.7'
+          flutter-version: "3.35.7"
       - run: flutter pub get
-      - run: flutter build web --release --base-href /bitacora_web/ --no-wasm-dry-run
+      - run: flutter build web --release --base-href /bitacora_web/
+      - run: cp build/web/index.html build/web/404.html
       - uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
