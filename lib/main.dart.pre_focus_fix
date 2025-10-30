@@ -829,7 +829,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   Expanded(
                     child: TextField(
                       controller: _hdrCtls[c],
-                      focusNode: _hdrFoci[c],
+
                       maxLines: 1,
                       textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
@@ -940,7 +940,7 @@ class _EditorScreenState extends State<EditorScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Focus(
-            focusNode: node,
+
             onFocusChange: (has) {
               if (has) {
                 _focusR = r;

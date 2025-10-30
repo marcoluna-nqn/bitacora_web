@@ -55,7 +55,9 @@ class ExportXlsxService {
     }
     sheet.getRangeByIndex(1, 1, saneRows.length + 1, colCount).autoFitColumns();
 
-    final bytes = Uint8List.fromList(book.saveAsStream());
+    sheet.freezePanes(1, 0);
+for (var i = 1; i <= colCount; i++) { final w = sheet.getRangeByIndex(1, i).columnWidth; if (w -lt 12) { sheet.getRangeByIndex(1, i).columnWidth = 12; } }
+final bytes = Uint8List.fromList(book.saveAsStream());
     book.dispose();
     await saveXlsxBytes(bytes, fileName);
   }
@@ -81,3 +83,5 @@ class ExportXlsxService {
     }).toList(growable: false);
   }
 }
+
+

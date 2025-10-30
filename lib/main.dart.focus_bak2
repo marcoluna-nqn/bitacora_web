@@ -544,12 +544,12 @@ class _EditorScreenState extends State<EditorScreen> {
   late final TableController ctrl;
 
   final Map<String, TextEditingController> _ctls = {};
-  final Map<String, FocusNode> _foci = {};
+// removed: _foci
   final Map<String, GlobalKey> _cellKeys = {};
   final Map<String, bool> _firstCharReplace = {};
 
   final List<TextEditingController> _hdrCtls = [];
-  final List<FocusNode> _hdrFoci = [];
+// removed: _hdrFoci
 
   late List<bool> numericCols;
   late List<double> colWidths;
@@ -619,7 +619,7 @@ class _EditorScreenState extends State<EditorScreen> {
           });
           _ctls[key] = ctl;
         }
-        _foci.putIfAbsent(key, () => FocusNode());
+
         _cellKeys.putIfAbsent(key, () => GlobalKey());
         _firstCharReplace[key] = false;
       }
@@ -638,7 +638,7 @@ class _EditorScreenState extends State<EditorScreen> {
         _sheetDebounce(() => _saveSheetDebounced());
       });
       _hdrCtls.add(c);
-      _hdrFoci.add(FocusNode());
+
     }
   }
 
@@ -710,13 +710,13 @@ class _EditorScreenState extends State<EditorScreen> {
     }
   }
 
-  void _moveFocus(int r, int c) {
+  void _move/*FOCUS_REMOVED*/ (int r, int c) {
     _focusR = r.clamp(0, ctrl.rows.length - 1);
     _focusC = c.clamp(0, ctrl.headers.length - 1);
     final nextKey = _k(_focusR, _focusC);
     Future.microtask(() {
-      final node = _foci[nextKey];
-      node?.requestFocus();
+
+      node?.request/*FOCUS_REMOVED*/ ();
       final ctl = _ctls[nextKey];
       if (ctl != null) {
         ctl.selection = TextSelection.collapsed(offset: ctl.text.length);
@@ -764,34 +764,34 @@ class _EditorScreenState extends State<EditorScreen> {
     // Navegación tipo planilla
     if (e.logicalKey == LogicalKeyboardKey.enter || e.logicalKey == LogicalKeyboardKey.numpadEnter) {
       if (_shiftDown()) {
-        _moveFocus(r - 1, c);
+        _move/*FOCUS_REMOVED*/ (r - 1, c);
       } else {
         _ensureRowOnEnter(r);
-        _moveFocus(r + 1, c);
+        _move/*FOCUS_REMOVED*/ (r + 1, c);
       }
       _snapshot();
       return KeyEventResult.handled;
     }
     if (e.logicalKey == LogicalKeyboardKey.tab) {
       final left = _shiftDown();
-      _moveFocus(r, c + (left ? -1 : 1));
+      _move/*FOCUS_REMOVED*/ (r, c + (left ? -1 : 1));
       return KeyEventResult.handled;
     }
     if (e.logicalKey == LogicalKeyboardKey.arrowDown) {
       _ensureRowOnEnter(r);
-      _moveFocus(r + 1, c);
+      _move/*FOCUS_REMOVED*/ (r + 1, c);
       return KeyEventResult.handled;
     }
     if (e.logicalKey == LogicalKeyboardKey.arrowUp) {
-      _moveFocus(r - 1, c);
+      _move/*FOCUS_REMOVED*/ (r - 1, c);
       return KeyEventResult.handled;
     }
     if (e.logicalKey == LogicalKeyboardKey.arrowRight) {
-      _moveFocus(r, c + 1);
+      _move/*FOCUS_REMOVED*/ (r, c + 1);
       return KeyEventResult.handled;
     }
     if (e.logicalKey == LogicalKeyboardKey.arrowLeft) {
-      _moveFocus(r, c - 1);
+      _move/*FOCUS_REMOVED*/ (r, c - 1);
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
@@ -829,7 +829,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   Expanded(
                     child: TextField(
                       controller: _hdrCtls[c],
-                      focusNode: _hdrFoci[c],
+
                       maxLines: 1,
                       textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
@@ -841,7 +841,7 @@ class _EditorScreenState extends State<EditorScreen> {
                       style: const TextStyle(fontWeight: FontWeight.w700),
                       onSubmitted: (_) {
                         _snapshot();
-                        _moveFocus(0, c);
+                        _move/*FOCUS_REMOVED*/ (0, c);
                         _saveSheetDebounced();
                       },
                     ),
@@ -939,8 +939,8 @@ class _EditorScreenState extends State<EditorScreen> {
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Focus(
-            focusNode: node,
+          child: /*FOCUS_REMOVED*/ (
+
             onFocusChange: (has) {
               if (has) {
                 _focusR = r;
@@ -958,7 +958,7 @@ class _EditorScreenState extends State<EditorScreen> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: TextField(
-                  focusNode: node, // <<<<<< clave para editar directo al moverse con el teclado
+
                   controller: ctl,
                   maxLines: 1,
                   textInputAction: TextInputAction.done,
@@ -970,7 +970,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   },
                   onSubmitted: (_) {
                     _ensureRowOnEnter(r);
-                    _moveFocus(_shiftDown() ? r - 1 : r + 1, c);
+                    _move/*FOCUS_REMOVED*/ (_shiftDown() ? r - 1 : r + 1, c);
                   },
                   onChanged: (_) => _sheetDebounce(() => _saveSheetDebounced()),
                   inputFormatters: inputFmt,
@@ -1071,7 +1071,7 @@ class _EditorScreenState extends State<EditorScreen> {
     }
     _syncFromModel();
     setState(() {});
-    _moveFocus(_focusR + 1, _focusC < 0 ? 0 : _focusC);
+    _move/*FOCUS_REMOVED*/ (_focusR + 1, _focusC < 0 ? 0 : _focusC);
     _snapshot();
     _saveSheetDebounced();
   }
@@ -1096,7 +1096,7 @@ class _EditorScreenState extends State<EditorScreen> {
       },
     );
     if (n != null && n > 0 && n <= ctrl.rows.length) {
-      _moveFocus(n - 1, 0);
+      _move/*FOCUS_REMOVED*/ (n - 1, 0);
     }
   }
 
@@ -1154,7 +1154,7 @@ class _EditorScreenState extends State<EditorScreen> {
               ctrl.removeRow(_focusR);
               _rebuildAllControllers();
               final r = (_focusR - 1).clamp(0, ctrl.rows.length - 1);
-              _moveFocus(r, _focusC < 0 ? 0 : _focusC);
+              _move/*FOCUS_REMOVED*/ (r, _focusC < 0 ? 0 : _focusC);
               _snapshot();
               _saveSheetDebounced();
             }
