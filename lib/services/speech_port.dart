@@ -1,13 +1,14 @@
-// Interfaz común para voz (Web / IO).
-import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show ValueChanged;
+import 'package:flutter/widgets.dart' show TextEditingController;
 
+/// Contrato común para IO/Web.
 abstract class SpeechPort {
   String? get currentLocale;
   bool get isAvailable;
   bool get isListening;
 
   Future<bool> init({String? preferredLocale});
+
   Future<String?> listenOnce({
     String? localeId,
     ValueChanged<String>? partial,

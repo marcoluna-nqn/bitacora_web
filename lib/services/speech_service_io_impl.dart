@@ -1,11 +1,16 @@
-// Android/iOS/desktop: speech_to_text 6.x
+// lib/services/speech_impl_io.dart
+// Android/iOS/desktop usando speech_to_text 6.x
+
 import 'dart:async';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/widgets.dart'
+    show TextEditingController, ValueChanged, TextSelection;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'speech_service.dart';
 
-class _SpeechServiceIO implements SpeechService {
+import 'speech_port.dart';
+
+class SpeechServiceIoImpl implements SpeechPort {
   final stt.SpeechToText _stt = stt.SpeechToText();
   bool _inited = false;
   bool _available = false;
@@ -22,22 +27,40 @@ class _SpeechServiceIO implements SpeechService {
   @override
   Future<bool> init({String? preferredLocale}) async {
     if (_inited) return _available;
+
+    // Permiso de micrófono (silencioso si la plataforma no lo requiere).
+    try {
+      final mic = await Permission.microphone.request();
+      if (!mic.isGranted) {
+        _inited = true;
+        _available = false;
+        return false;
+      }
+    } catch (_) {}
+
     try {
       _available = await _stt.initialize(
-        onError: (e) => debugPrint('STT error: $e'),
-        onStatus: (s) => debugPrint('STT status: $s'),
+        onError: (e) {}, // sin spam en consola
+        onStatus: (s) {},
       );
+
       if (_available) {
         final sys = await _stt.systemLocale();
         final locales = await _stt.locales();
 
-        String? pick = sys?.localeId;
-        pick ??= locales
-            .where((l) => l.localeId.toLowerCase().startsWith('es'))
-            .map((l) => l.localeId)
-            .cast<String?>()
-            .firstWhere((e) => e != null && e.isNotEmpty, orElse: () => null);
+        String? pick =
+        (sys?.localeId?.isNotEmpty ?? false) ? sys!.localeId : null;
 
+        // Español si existe
+        pick ??= (() {
+          final l = locales.firstWhere(
+                (x) => x.localeId.toLowerCase().startsWith('es'),
+            orElse: () => stt.LocaleName('', ''),
+          );
+          return l.localeId.isEmpty ? null : l.localeId;
+        })();
+
+        // Preferido exacto si está
         if (preferredLocale != null) {
           final variants = {
             preferredLocale,
@@ -48,13 +71,12 @@ class _SpeechServiceIO implements SpeechService {
                 (l) => variants.contains(l.localeId),
             orElse: () => stt.LocaleName('', ''),
           );
-          if (hit.localeId.isNotEmpty) pick = hit.localeId;
+          if (hit.localeId.isNotEmpty) pick ??= hit.localeId;
         }
 
         _localeId = pick ?? 'en_US';
       }
-    } catch (e) {
-      debugPrint('STT init failed: $e');
+    } catch (_) {
       _available = false;
     } finally {
       _inited = true;
@@ -73,56 +95,65 @@ class _SpeechServiceIO implements SpeechService {
 
     if (_listening) {
       await stop();
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await Future<void>.delayed(const Duration(milliseconds: 40));
     }
 
-    final completer = Completer<String?>();
-    String lastPartial = '';
-    _listening = true;
-    Timer? killer;
+    Future<String?> run(String? loc) async {
+      final completer = Completer<String?>();
+      String lastPartial = '';
+      _listening = true;
+      Timer? killer;
 
-    try {
-      final ok = await _stt.listen(
-        localeId: localeId ?? _localeId,
-        listenFor: autoTimeout,
-        pauseFor: const Duration(seconds: 3),
-        partialResults: true,
-        onDevice: false,
-        onResult: (res) {
-          final txt = res.recognizedWords.trim();
-          if (txt.isNotEmpty) {
-            lastPartial = txt;
-            partial?.call(txt);
-          }
-          if (res.finalResult && !completer.isCompleted) {
-            completer.complete(txt);
-          }
-        },
-        onSoundLevelChange: (raw) {
-          if (level != null) {
+      try {
+        final ok = await _stt.listen(
+          localeId: loc,
+          listenMode: stt.ListenMode.dictation,
+          partialResults: true,
+          cancelOnError: true,
+          onDevice: false,
+          listenFor: autoTimeout,
+          onResult: (res) {
+            final txt = res.recognizedWords.trim();
+            if (txt.isNotEmpty) {
+              lastPartial = txt;
+              partial?.call(txt);
+            }
+            if (res.finalResult && !completer.isCompleted) {
+              completer.complete(txt);
+            }
+          },
+          onSoundLevelChange: (raw) {
             final v = ((raw + 2.0) / 10.0).clamp(0.0, 1.0);
-            level(v);
+            level?.call(v);
+          },
+        );
+
+        if (ok == false && !completer.isCompleted) completer.complete(null);
+
+        killer = Timer(autoTimeout, () async {
+          if (!completer.isCompleted) {
+            completer.complete(lastPartial.isEmpty ? null : lastPartial);
           }
-        },
-      );
+          await stop();
+        });
+      } on PlatformException {
+        if (!completer.isCompleted) completer.complete(null);
+      }
 
-      if (ok == false && !completer.isCompleted) completer.complete(null);
-
-      killer = Timer(autoTimeout, () async {
-        if (!completer.isCompleted) {
-          completer.complete(lastPartial.isEmpty ? null : lastPartial);
-        }
-        await stop();
-      });
-    } on PlatformException catch (e) {
-      debugPrint('STT listen error: $e');
-      if (!completer.isCompleted) completer.complete(null);
+      final out = await completer.future;
+      killer?.cancel();
+      await stop();
+      return out;
     }
 
-    final out = await completer.future;
-    killer?.cancel();
-    await stop();
-    return out;
+    final a = await run(localeId ?? _localeId);
+    if (a != null && a.isNotEmpty) return a;
+
+    if ((localeId ?? _localeId) != null) {
+      final b = await run(null);
+      if (b != null && b.isNotEmpty) return b;
+    }
+    return await run('en_US');
   }
 
   @override
@@ -131,14 +162,18 @@ class _SpeechServiceIO implements SpeechService {
         String? localeId,
         Duration autoTimeout = const Duration(seconds: 60),
       }) async {
-    await listenOnce(
+    final txt = await listenOnce(
       localeId: localeId,
       autoTimeout: autoTimeout,
-      partial: (txt) {
-        controller.text = txt;
-        controller.selection = TextSelection.collapsed(offset: txt.length);
+      partial: (s) {
+        controller.text = s;
+        controller.selection = TextSelection.collapsed(offset: s.length);
       },
     );
+    if (txt != null) {
+      controller.text = txt;
+      controller.selection = TextSelection.collapsed(offset: txt.length);
+    }
   }
 
   @override
@@ -160,4 +195,5 @@ class _SpeechServiceIO implements SpeechService {
   }
 }
 
-SpeechService getSpeechService() => _SpeechServiceIO();
+// Fábrica requerida por el facade condicional.
+SpeechPort createSpeechImpl() => SpeechServiceIoImpl();

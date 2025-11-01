@@ -1,8 +1,7 @@
-// Fallback para plataformas no soportadas.
 import 'package:flutter/widgets.dart';
-import 'speech_service.dart';
+import 'speech_port.dart';
 
-class _SpeechStub implements SpeechService {
+class _SpeechStub implements SpeechPort {
   @override
   String? get currentLocale => null;
   @override
@@ -22,8 +21,11 @@ class _SpeechStub implements SpeechService {
   }) async => null;
 
   @override
-  Future<void> fillControllerOnce(TextEditingController controller,
-      {String? localeId, Duration autoTimeout = const Duration(seconds: 60)}) async {}
+  Future<void> fillControllerOnce(
+      TextEditingController controller, {
+        String? localeId,
+        Duration autoTimeout = const Duration(seconds: 60),
+      }) async {}
 
   @override
   Future<void> stop() async {}
@@ -32,4 +34,5 @@ class _SpeechStub implements SpeechService {
   Future<void> cancel() async {}
 }
 
-SpeechService getSpeechService() => _SpeechStub();
+/// Fábrica por defecto cuando no hay impl específica disponible.
+SpeechPort createSpeechImpl() => _SpeechStub();

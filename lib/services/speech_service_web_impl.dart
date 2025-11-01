@@ -1,19 +1,25 @@
-// Web: Web Speech API (SpeechRecognition / webkitSpeechRecognition).
+// Web: implementación SpeechPort usando Web Speech API (SpeechRecognition / webkitSpeechRecognition).
 import 'dart:async';
 import 'dart:html' as html;
-import 'package:js/js_util.dart' as jsu;
 import 'package:flutter/widgets.dart';
-import 'speech_service.dart';
+import 'package:js/js_util.dart' as jsu;
 
-class _SpeechServiceWeb implements SpeechService {
+import 'speech_port.dart';
+
+class SpeechServiceWebImpl implements SpeechPort {
   bool _supported = false;
   bool _listening = false;
   String? _locale;
 
+  // Referencia al recognizer activo para poder frenarlo antes de un nuevo start().
+  dynamic _rec;
+
   @override
   String? get currentLocale => _locale;
+
   @override
   bool get isAvailable => _supported;
+
   @override
   bool get isListening => _listening;
 
@@ -29,15 +35,19 @@ class _SpeechServiceWeb implements SpeechService {
   Future<String?> listenOnce({
     String? localeId,
     ValueChanged<String>? partial,
-    ValueChanged<double>? level,
+    ValueChanged<double>? level, // no hay nivel en Web Speech → ignorado
     Duration autoTimeout = const Duration(seconds: 60),
   }) async {
     final ok = await init(preferredLocale: localeId ?? _locale);
     if (!ok) return null;
 
+    // Si ya hay una sesión, frenarla (evita InvalidStateError).
+    await _safeStop();
+
     final lang = _norm(localeId) ?? _locale ?? 'es-AR';
     final ctor = _getRecognizerCtor();
     final rec = jsu.callConstructor(ctor, []);
+    _rec = rec;
 
     jsu.setProperty(rec, 'lang', lang);
     jsu.setProperty(rec, 'continuous', false);
@@ -48,10 +58,14 @@ class _SpeechServiceWeb implements SpeechService {
     String lastPartial = '';
     _listening = true;
 
+    // Timeout duro: si no hubo final, cerramos con el último parcial.
     Timer? killer = Timer(autoTimeout, () {
-      jsu.callMethod(rec, 'stop', const []);
+      try {
+        jsu.callMethod(rec, 'stop', const []);
+      } catch (_) {}
     });
 
+    // onresult: tomar último result (interino o final).
     jsu.setProperty(rec, 'onresult', jsu.allowInterop((event) {
       try {
         final results = jsu.getProperty(event, 'results');
@@ -59,28 +73,34 @@ class _SpeechServiceWeb implements SpeechService {
         if (len <= 0) return;
         final last = jsu.getProperty(results, len - 1);
         final alt0 = jsu.getProperty(last, 0);
-        final txt = (jsu.getProperty(alt0, 'transcript') as String?) ?? '';
-        final t = txt.trim();
-        if (t.isNotEmpty) {
-          lastPartial = t;
-          partial?.call(t);
+        final txt = (jsu.getProperty(alt0, 'transcript') as String? ?? '').trim();
+        if (txt.isNotEmpty) {
+          lastPartial = txt;
+          partial?.call(txt);
         }
         final isFinal = (jsu.getProperty(last, 'isFinal') == true);
-        if (isFinal && !done.isCompleted) done.complete(t);
-      } catch (_) {}
+        if (isFinal && !done.isCompleted) {
+          done.complete(txt);
+        }
+      } catch (_) {
+        // Ignorar variaciones de eventos entre navegadores.
+      }
     }));
 
     void finish() {
       killer?.cancel();
+      _listening = false;
+      _rec = null;
       if (!done.isCompleted) {
         done.complete(lastPartial.isEmpty ? null : lastPartial);
       }
-      _listening = false;
     }
 
+    // onend/onerror: cerrar de forma uniforme (sin castear el evento).
     jsu.setProperty(rec, 'onend', jsu.allowInterop((_) => finish()));
     jsu.setProperty(rec, 'onerror', jsu.allowInterop((_) => finish()));
 
+    // start: requiere gesto de usuario (ya lo invocás desde un botón).
     jsu.callMethod(rec, 'start', const []);
     return await done.future;
   }
@@ -106,15 +126,24 @@ class _SpeechServiceWeb implements SpeechService {
   }
 
   @override
-  Future<void> stop() async {
-    _listening = false;
-  }
+  Future<void> stop() => _safeStop();
 
   @override
-  Future<void> cancel() async {
+  Future<void> cancel() => _safeStop();
+
+  Future<void> _safeStop() async {
+    if (_rec != null) {
+      try {
+        jsu.callMethod(_rec, 'stop', const []);
+      } catch (_) {}
+      // Pequeño delay para permitir que dispare onend y libere el estado.
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      _rec = null;
+    }
     _listening = false;
   }
 
+  // --- helpers Web Speech
   bool _hasRecognizerCtor() {
     final w = html.window;
     final a = jsu.getProperty(w, 'SpeechRecognition');
@@ -132,4 +161,5 @@ class _SpeechServiceWeb implements SpeechService {
       (loc == null || loc.isEmpty) ? null : loc.replaceAll('_', '-');
 }
 
-SpeechService getSpeechService() => _SpeechServiceWeb();
+// Fábrica que consume el facade en Web.
+SpeechPort createSpeechImpl() => SpeechServiceWebImpl();
