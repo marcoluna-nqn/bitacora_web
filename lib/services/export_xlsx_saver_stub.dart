@@ -1,4 +1,6 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
+
 Future<void> saveXlsxBytes(Uint8List bytes, String fileName) async {
-  throw UnsupportedError('Exportación XLSX soportada solo en Web en este proyecto.');
+  throw UnsupportedError(
+      'Exportación XLSX soportada solo en Web en este proyecto.');
 }

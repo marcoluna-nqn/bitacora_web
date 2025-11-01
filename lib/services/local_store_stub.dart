@@ -1,4 +1,4 @@
-﻿import "dart:convert";
+import "dart:convert";
 import "package:shared_preferences/shared_preferences.dart";
 import "../models/table_state.dart";
 
@@ -27,6 +27,7 @@ class LocalStore {
     await prefs.remove(_key);
   }
 
-  static Future<void> downloadBackup(TableState state, {String filename = "bitacora_backup.json"}) async {}
+  static Future<void> downloadBackup(TableState state,
+      {String filename = "bitacora_backup.json"}) async {}
   static Future<TableState?> importBackup() async => null;
 }

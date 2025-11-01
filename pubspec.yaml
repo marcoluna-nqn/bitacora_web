@@ -14,44 +14,61 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
 
-  # Utilidades base
-  intl: 0.20.2            # Fechas, números y formatos locales
-  collection: ^1.18.0      # Helpers de listas y mapas
+  # Utilidades
+  intl: 0.20.2
+  collection: ^1.18.0
 
-  # Navegación escalable
-  go_router: ^14.2.7
+  # Navegación
+  go_router: ^16.3.0
 
-  # Estado y preferencias ligeras
+  # Estado / preferencias
   shared_preferences: ^2.3.2
 
-  # Persistencia futura multi-plataforma
+  # Persistencia
   hive: ^2.2.3
   hive_flutter: ^1.1.0
 
-  # Exportación y archivos
-  syncfusion_flutter_xlsio: 31.2.3
+  # Syncfusion
+  syncfusion_flutter_core: ^31.2.4
+  syncfusion_flutter_datagrid: ^31.2.4
+  syncfusion_flutter_xlsio: ^31.2.4
+
+  # Archivos / exportación
   file_selector: ^1.0.4
-  file_saver: ^0.3.1        # Útil para desktop; en web ya usamos Blob
-
-  # Alternativa simple de exportación
+  file_saver: ^0.3.1
   csv: ^6.0.0
+  path: ^1.9.0
+  path_provider: ^2.1.4
 
-  # UX pulida tipo Apple
-  flutter_animate: ^4.5.0
+  # UX
+  flutter_animate: ^4.5.2
   animations: ^2.0.11
   lottie: ^3.1.2
-  url_launcher: ^6.3.0      # Abrir ayudas, docs y enlaces
+  url_launcher: ^6.3.2
 
-  # Diagnóstico y calidad
-  sentry_flutter: ^8.8.0    # Errores en producción
-  package_info_plus: ^8.0.2 # Versión de la app
+  # Compartir / correo
+  share_plus: ^12.0.1
+  flutter_email_sender: ^8.0.0   # en Web no funciona; usa mailto/share_plus allí
+
+  # Voz a texto
+  speech_to_text: ^6.6.0
+  permission_handler: ^11.3.1
+
+  # GPS / ubicación
+  geolocator: ^12.0.0
+
+  # Diagnóstico (opcional)
+  sentry_flutter: ^9.7.0
+  package_info_plus: ^9.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   build_runner: ^2.4.9
   hive_generator: ^2.0.1
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/sfx/   # incluye type.wav y futuros enter.wav/backspace.wav

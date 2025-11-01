@@ -1,35 +1,44 @@
-name: Deploy Flutter Web to GitHub Pages
+name: Deploy web to GitHub Pages
+
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.35.7'
 
-      - name: Flutter pub get
-        run: flutter pub get
+      - run: flutter pub get
+      - run: flutter build web --release --base-href "/bitacora_web/" --web-renderer html
+      - run: cp build/web/index.html build/web/404.html
 
-      - name: Build web (base-href dinámico para Pages)
-        run: |
-          REPO_NAME="${GITHUB_REPOSITORY#*/}"
-          flutter build web --release --web-renderer canvaskit --base-href "/${REPO_NAME}/"
-
-      - name: Deploy to gh-pages
-        uses: peaceiris/actions-gh-pages@v4
+      - uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build/web
-          force_orphan: true
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,4 +1,4 @@
-﻿import "dart:convert";
+import "dart:convert";
 import "dart:html" as html;
 import "../models/table_state.dart";
 
@@ -24,11 +24,14 @@ class LocalStore {
     html.window.localStorage.remove(_key);
   }
 
-  static Future<void> downloadBackup(TableState state, {String filename = "bitacora_backup.json"}) async {
+  static Future<void> downloadBackup(TableState state,
+      {String filename = "bitacora_backup.json"}) async {
     final data = utf8.encode(jsonEncode(state.toJson()));
     final blob = html.Blob([data], "application/json");
     final url = html.Url.createObjectUrlFromBlob(blob);
-    final a = html.AnchorElement(href: url)..download = filename..style.display = "none";
+    final a = html.AnchorElement(href: url)
+      ..download = filename
+      ..style.display = "none";
     html.document.body?.append(a);
     a.click();
     a.remove();
@@ -36,7 +39,8 @@ class LocalStore {
   }
 
   static Future<TableState?> importBackup() async {
-    final input = html.FileUploadInputElement()..accept = ".json,application/json";
+    final input = html.FileUploadInputElement()
+      ..accept = ".json,application/json";
     input.click();
     await input.onChange.first;
     final file = input.files?.first;
