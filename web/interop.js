@@ -29,8 +29,10 @@ const Bitacora={
         for(let i=e.resultIndex;i<e.results.length;i++){
           const r=e.results[i]; if(r.isFinal) finalText+=r[0].transcript;
         }
+        finalText=finalText.trim();
         if(finalText){
-          window.dispatchEvent(new CustomEvent("bitacora:speech",{detail:{text:finalText.trim()}}));
+          window.dispatchEvent(new CustomEvent("bitacora:speech",{detail:{text:finalText}}));
+          try{ navigator.clipboard.writeText(finalText); }catch(_){}
         }
       };
       this._rec.onerror=(e)=>window.dispatchEvent(new CustomEvent("bitacora:speechError",{detail:e.error}));
