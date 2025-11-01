@@ -4,7 +4,6 @@ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const Bitacora={
   speechSupported:!!SR && !isIOS,
   _rec:null,_recording:false,
-
   async getLocation(){
     if(!("geolocation" in navigator)) throw new Error("GPS no disponible");
     return new Promise((resolve,reject)=>{
@@ -18,7 +17,6 @@ const Bitacora={
       );
     });
   },
-
   startSpeech(lang="es-AR"){
     if(!this.speechSupported) throw new Error("Speech no soportado");
     if(!this._rec){
@@ -33,12 +31,16 @@ const Bitacora={
         if(finalText){
           window.dispatchEvent(new CustomEvent("bitacora:speech",{detail:{text:finalText}}));
           try{ navigator.clipboard.writeText(finalText); }catch(_){}
+          toast("Texto copiado. Pegá en la celda.",1400);
         }
       };
-      this._rec.onerror=(e)=>window.dispatchEvent(new CustomEvent("bitacora:speechError",{detail:e.error}));
-      this._rec.onend=()=>{ if(this._recording) try{ this._rec.start(); }catch(_){} };
+      this._rec.onerror=(e)=>{
+        window.dispatchEvent(new CustomEvent("bitacora:speechError",{detail:e.error}));
+        toast("Error mic: "+e.error,1600);
+      };
+      this._rec.onend=()=>{ if(this._recording) setTimeout(()=>{ try{ this._rec.start(); }catch(_){} }, 200); };
     }
-    try{ this._rec.start(); this._recording=true; }catch(_){}
+    try{ this._rec.start(); this._recording=true; toast("Grabando…",900); }catch(_){}
   },
   stopSpeech(){ this._recording=false; try{ this._rec&&this._rec.stop(); }catch(_){} },
   toggleSpeech(){ this._recording?this.stopSpeech():this.startSpeech(); },
@@ -58,13 +60,13 @@ function toast(msg,ms=1800){
 if(gpsFab){
   gpsFab.addEventListener("click",async()=>{
     try{
-      toast("Obteniendo ubicación…",1200);
+      toast("Obteniendo ubicación…",900);
       const {lat,lon,accuracy}=await Bitacora.getLocation();
       const payload={lat,lon,accuracy,text:`${lat}, ${lon} \u00B1${accuracy} m`};
       window.dispatchEvent(new CustomEvent("bitacora:gps",{detail:payload}));
       await Bitacora.copy(payload.text);
-      toast("Ubicación lista y copiada");
-    }catch(e){ toast("No se pudo obtener la ubicación"); }
+      toast("Ubicación lista y copiada",1200);
+    }catch(e){ toast("No se pudo obtener la ubicación",1500); }
   });
 }
 
@@ -77,6 +79,6 @@ if(micFab){
     if(!Bitacora.speechSupported) return;
     Bitacora.toggleSpeech();
     micFab.classList.toggle("is-recording");
-    toast(micFab.classList.contains("is-recording")?"Grabando…":"Dictado detenido",1200);
+    toast(micFab.classList.contains("is-recording")?"Grabando…":"Dictado detenido",900);
   });
 }
