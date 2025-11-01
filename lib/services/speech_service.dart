@@ -1,26 +1,4 @@
-// Contrato mínimo para STT multi-plataforma.
-import 'package:flutter/widgets.dart' show TextEditingController, ValueChanged;
-
-abstract class SpeechPort {
-  String? get currentLocale;
-  bool get isAvailable;
-  bool get isListening;
-
-  Future<bool> init({String? preferredLocale});
-
-  Future<String?> listenOnce({
-    String? localeId,
-    ValueChanged<String>? partial,
-    ValueChanged<double>? level, // 0..1 si la plataforma lo soporta
-    Duration autoTimeout = const Duration(seconds: 60),
-  });
-
-  Future<void> fillControllerOnce(
-      TextEditingController controller, {
-        String? localeId,
-        Duration autoTimeout = const Duration(seconds: 60),
-      });
-
-  Future<void> stop();
-  Future<void> cancel();
-}
+// Facade STT: elige la impl según la plataforma.
+export 'speech_service_stub.dart'
+if (dart.library.html) 'speech_service_web_impl.dart'
+if (dart.library.io) 'speech_service_io_impl.dart';
