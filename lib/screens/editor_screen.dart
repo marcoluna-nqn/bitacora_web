@@ -20,6 +20,7 @@ import '../workers/json_worker.dart';
 import '../widgets/attachments_button.dart';
 
 import 'package:bitacora_web/services/speech_service.dart';
+import 'package:bitacora_web/services/speech_service.dart';
 class EditorScreen extends StatefulWidget {
   const EditorScreen({
     super.key,
@@ -1117,4 +1118,5 @@ class _EditorSkeleton extends StatelessWidget {
     ]);
   }
 }
+
 
