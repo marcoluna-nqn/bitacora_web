@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="Bitácora Web — hoja tipo Excel con exportación XLSX." />
+  <meta name="theme-color" content="#0A84FF" />
+
+  <!-- PWA / iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Bitácora Web" />
+  <link rel="apple-touch-icon" href="icons/Icon-192.png" />
+
+  <!-- PWA / Android -->
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- Importante para GitHub Pages: se reemplaza en build -->
+  <base href="/bitacora_web/" />
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <title>Bitácora Web</title>
+
+  <!-- Anti-cache: desregistrar cualquier Service Worker viejo y limpiar caches -->
+  <script>
+    (function () {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
+      }
+      if (window.caches?.keys) {
+        caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+      }
+    })();
+  </script>
+</head>
+<body>
+<noscript>Habilitá JavaScript para usar esta app.</noscript>
+
+<!-- Bootstrap de Flutter -->
+<script src="flutter_bootstrap.js" async></script>
+<link rel="stylesheet" href="interop.css" />
+<script type="module" src="interop.js"></script>
+<button id="gpsFab" class="fab" title="Ubicación">📍</button>
+<button id="micFab" class="fab fab-left" title="Dictado">🎙️</button>
+
+<!-- Sonidito de tipeo (opcional) -->
+<audio id="typeSfx" src="assets/sfx/type.wav" preload="auto"></audio>
+<script>
+  (function(){
+    let last = 0;
+    const el = document.getElementById('typeSfx');
+    document.addEventListener('keydown', e => {
+      const t = performance.now();
+      if (t - last > 90) {
+        try { el.currentTime = 0; el.play(); } catch (_) {}
+        last = t;
+      }
+    });
+  })();
+</script>
+</body>
+</html>
+
