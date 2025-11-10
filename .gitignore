@@ -10,3 +10,5 @@ web/.dart_tool/
 **/*.lock
 **/.flutter-plugins*
 **/.metadata
+.venv/
+.idea/
