@@ -1,0 +1,61 @@
+﻿name: Deploy Flutter Web (Pages)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "lib/**"
+      - "web/**"
+      - "pubspec.yaml"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Cache-buster + 404.html
+        run: |
+          stamp=$(date +%Y%m%d%H%M%S)
+          sed -i "s/flutter_bootstrap.js/flutter_bootstrap.js?v=$stamp/g" web/index.html
+          cp web/index.html web/404.html
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Build (release, no PWA, base-href)
+        env:
+          FLUTTER_WEB_USE_SKIA: "true"
+        run: flutter build web --release --base-href "/bitacora_web/" --pwa-strategy=none --no-wasm-dry-run
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

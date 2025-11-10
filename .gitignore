@@ -1,0 +1,12 @@
+﻿.dart_tool/
+.packages
+build/
+.ios/
+.android/
+windows/
+linux/
+macos/
+web/.dart_tool/
+**/*.lock
+**/.flutter-plugins*
+**/.metadata
