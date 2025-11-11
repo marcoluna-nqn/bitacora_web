@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart'; // <- importante
 
 import 'services/auth_service.dart';
 import 'screens/auth_gate.dart';
@@ -11,6 +12,17 @@ Future<void> main() async {
   // await AuthService.instance.init();
 
   runApp(const App());
+}
+
+/// Permite arrastrar para hacer scroll con dedo, mouse, etc.
+class MyScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,   // dedo (iOS / Android)
+    PointerDeviceKind.mouse,   // mouse
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.unknown,
+  };
 }
 
 class App extends StatefulWidget {
@@ -35,6 +47,7 @@ class _AppState extends State<App> {
       debugShowCheckedModeBanner: false,
       title: 'BitFlow',
       theme: theme,
+      scrollBehavior: MyScrollBehavior(), // <- clave
       home: AuthGate(
         child: StartPage(
           isLight: _isLight,
