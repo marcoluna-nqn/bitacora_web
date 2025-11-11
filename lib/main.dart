@@ -1,5 +1,5 @@
+import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart'; // <- importante
 
 import 'services/auth_service.dart';
 import 'screens/auth_gate.dart';
@@ -7,22 +7,7 @@ import 'screens/start_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Si tu AuthService requiere inicialización global, hacelo acá.
-  // await AuthService.instance.init();
-
   runApp(const App());
-}
-
-/// Permite arrastrar para hacer scroll con dedo, mouse, etc.
-class MyScrollBehavior extends MaterialScrollBehavior {
-  @override
-  Set<PointerDeviceKind> get dragDevices => {
-    PointerDeviceKind.touch,   // dedo (iOS / Android)
-    PointerDeviceKind.mouse,   // mouse
-    PointerDeviceKind.stylus,
-    PointerDeviceKind.unknown,
-  };
 }
 
 class App extends StatefulWidget {
@@ -45,9 +30,9 @@ class _AppState extends State<App> {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'BitFlow',
+      title: 'Bit Flow',
       theme: theme,
-      scrollBehavior: MyScrollBehavior(), // <- clave
+      scrollBehavior: const _AppScrollBehavior(),
       home: AuthGate(
         child: StartPage(
           isLight: _isLight,
@@ -59,5 +44,30 @@ class _AppState extends State<App> {
         ),
       ),
     );
+  }
+}
+
+class _AppScrollBehavior extends MaterialScrollBehavior {
+  const _AppScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => <PointerDeviceKind>{
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.unknown,
+  };
+
+  // Si tu versión de Flutter admite este override, te da rebote tipo iOS.
+  // Si te da error de compilación, borrá TODO este método y dejá solo dragDevices.
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    final platform = getPlatform(context);
+    if (platform == TargetPlatform.iOS || platform == TargetPlatform.macOS) {
+      return const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      );
+    }
+    return const ClampingScrollPhysics();
   }
 }
