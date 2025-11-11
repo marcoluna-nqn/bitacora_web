@@ -1,5 +1,10 @@
 // lib/services/google_auth.dart
-// google_sign_in ^7.2.0 — Null-safe. Sin context a través de async gaps.
+// Versión compatible con google_sign_in: ^6.2.1
+//
+// - Usa GoogleSignIn() con scopes y clientId.
+// - Usa onCurrentUserChanged + signInSilently().
+// - Exponde signIn(), signOut(), requestScopes() y authorizationHeaders().
+
 import 'dart:async';
 import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:google_sign_in/google_sign_in.dart';
@@ -8,75 +13,62 @@ class GoogleAuthService {
   GoogleAuthService._();
   static final GoogleAuthService I = GoogleAuthService._();
 
-  final GoogleSignIn _gsi = GoogleSignIn.instance;
+  late final GoogleSignIn _gsi;
+  bool _inited = false;
 
   final ValueNotifier<GoogleSignInAccount?> user =
   ValueNotifier<GoogleSignInAccount?>(null);
-  final ValueNotifier<String> lastError = ValueNotifier<String>('');
+  final ValueNotifier<String> lastError =
+  ValueNotifier<String>('');
 
-  bool _inited = false;
-  bool _isAuthorized = false;
-  StreamSubscription<GoogleSignInAuthenticationEvent>? _sub;
+  StreamSubscription<GoogleSignInAccount?>? _sub;
 
-  bool get isAuthorized => _isAuthorized;
   GoogleSignInAccount? get currentUser => user.value;
+  bool get isAuthorized => user.value != null;
 
   Future<void> init({
-    required String clientId,          // en Web debe terminar en .apps.googleusercontent.com
-    String? serverClientId,            // opcional si hacés backend auth
+    String? clientId, // en Web: TU_CLIENT_ID_WEB.apps.googleusercontent.com
     List<String> bootstrapScopes = const ['email', 'profile', 'openid'],
   }) async {
     if (_inited) return;
 
-    await _gsi.initialize(clientId: clientId, serverClientId: serverClientId);
+    _gsi = GoogleSignIn(
+      clientId: clientId,
+      scopes: bootstrapScopes,
+    );
 
     await _sub?.cancel();
-    _sub = _gsi.authenticationEvents.listen((ev) async {
-      switch (ev) {
-        case GoogleSignInAuthenticationEventSignIn():
-          user.value = ev.user;
-          lastError.value = '';
-          try {
-            final ok = await _ensureScopes(bootstrapScopes);
-            _isAuthorized = ok;
-          } catch (_) {
-            _isAuthorized = false;
-          }
-        case GoogleSignInAuthenticationEventSignOut():
-          user.value = null;
-          _isAuthorized = false;
-          lastError.value = '';
-      }
-    }, onError: (Object e) {
-      user.value = null;
-      _isAuthorized = false;
-      lastError.value = e is GoogleSignInException
-          ? 'GoogleSignInException: ${e.code.name}'
-          : 'Error de autenticación: $e';
-    });
+    _sub = _gsi.onCurrentUserChanged.listen(
+          (GoogleSignInAccount? account) {
+        user.value = account;
+        lastError.value = '';
+      },
+      onError: (Object e) {
+        user.value = null;
+        lastError.value = 'Error de autenticación: $e';
+      },
+    );
 
-    // Sesión silenciosa si existe.
-    // ignore: discarded_futures
-    _gsi.attemptLightweightAuthentication();
+    // Reintenta sesión silenciosa si el usuario ya había entrado antes.
+    try {
+      final acc = await _gsi.signInSilently();
+      user.value = acc;
+    } catch (e) {
+      lastError.value = 'Error sesión silenciosa: $e';
+    }
 
     _inited = true;
   }
-
-  bool get supportsAuthenticate => _gsi.supportsAuthenticate();
 
   Future<void> signIn() async {
     if (!_inited) {
       throw StateError('Llamá antes a GoogleAuthService.I.init(...)');
     }
-    if (!supportsAuthenticate) {
-      lastError.value = 'authenticate() no soportado en esta plataforma.';
-      return;
-    }
     try {
-      await _gsi.authenticate(); // El estado llega por authenticationEvents.
-    } on GoogleSignInException catch (e) {
-      lastError.value = 'GoogleSignInException: ${e.code.name}';
-    } catch (e) {
+      final acc = await _gsi.signIn();
+      user.value = acc;
+      lastError.value = '';
+    } on Exception catch (e) {
       lastError.value = 'Error al iniciar sesión: $e';
     }
   }
@@ -84,51 +76,35 @@ class GoogleAuthService {
   Future<void> signOut() async {
     if (!_inited) return;
     try {
-      await _gsi.signOut();
-    } catch (_) {}
-  }
-
-  Future<void> disconnect() async {
-    if (!_inited) return;
-    try {
+      // disconnect() revoca y cierra sesión en dispositivos.
       await _gsi.disconnect();
     } catch (_) {}
+    try {
+      await _gsi.signOut();
+    } catch (_) {}
+    user.value = null;
   }
 
+  /// Pide scopes adicionales (drive, sheets, etc.).
   Future<bool> requestScopes(List<String> scopes) async {
-    final u = user.value;
-    if (u == null) return false;
     try {
-      final auth = await u.authorizationClient.authorizeScopes(scopes);
-      final ok = auth != null;
-      _isAuthorized = ok || _isAuthorized;
+      final ok = await _gsi.requestScopes(scopes);
       return ok;
-    } on GoogleSignInException catch (e) {
-      lastError.value = 'GoogleSignInException: ${e.code.name}';
-      return false;
-    } catch (e) {
+    } on Exception catch (e) {
       lastError.value = 'Error pidiendo permisos: $e';
       return false;
     }
   }
 
-  Future<Map<String, String>?> authorizationHeaders(List<String> scopes) async {
-    final u = user.value;
-    if (u == null) return null;
+  /// Headers Authorization para llamar a tu backend con token de Google.
+  Future<Map<String, String>?> authorizationHeaders() async {
+    final acc = user.value;
+    if (acc == null) return null;
     try {
-      final auth = await u.authorizationClient.authorizationForScopes(scopes);
-      if (auth == null) return null;
-      return {'Authorization': 'Bearer ${auth.accessToken}'};
+      return await acc.authHeaders;
     } catch (_) {
       return null;
     }
-  }
-
-  Future<bool> _ensureScopes(List<String> scopes) async {
-    final u = user.value;
-    if (u == null) return false;
-    final auth = await u.authorizationClient.authorizationForScopes(scopes);
-    return auth != null;
   }
 
   Future<void> dispose() async {

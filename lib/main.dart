@@ -55,11 +55,10 @@ class _AppScrollBehavior extends MaterialScrollBehavior {
     PointerDeviceKind.touch,
     PointerDeviceKind.mouse,
     PointerDeviceKind.stylus,
+    PointerDeviceKind.trackpad,
     PointerDeviceKind.unknown,
   };
 
-  // Si tu versión de Flutter admite este override, te da rebote tipo iOS.
-  // Si te da error de compilación, borrá TODO este método y dejá solo dragDevices.
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) {
     final platform = getPlatform(context);

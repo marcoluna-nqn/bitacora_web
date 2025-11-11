@@ -15,6 +15,12 @@ class ExportResult {
   });
 }
 
+/// Exportador central de XLSX para Gridnote / Bitácora.
+///
+/// - Soporta números, fechas, bool y texto.
+/// - Auto-ajusta columnas y filas.
+/// - Aplica estilos mínimos compatibles con el diseño de la app.
+/// - Usa saver específico por plataforma (IO / Web) vía import condicional.
 final class XlsxExporter {
   /// Exporta a XLSX real. Auto-fit columnas y filas. Estilos mínimos.
   static Future<ExportResult> export({
@@ -29,21 +35,23 @@ final class XlsxExporter {
       final ws = book.worksheets[0];
       ws.name = _safeSheetName(sheetName);
 
-      // Encabezados
+      // ---------- Encabezados ----------
       for (int c = 0; c < headers.length; c++) {
         ws.getRangeByIndex(1, c + 1).setText(headers[c]);
       }
-      final head =
-      ws.getRangeByIndex(1, 1, 1, headers.isEmpty ? 1 : headers.length);
-      final hs = head.cellStyle;
-      hs.bold = true;
-      hs.hAlign = xlsio.HAlignType.center;
-      hs.vAlign = xlsio.VAlignType.center;
-      hs.backColor = '#EEEEEE';
-      // Bordes de encabezado
-      hs.borders.all.lineStyle = xlsio.LineStyle.thin;
 
-      // Datos
+      if (headers.isNotEmpty) {
+        final head = ws.getRangeByIndex(1, 1, 1, headers.length);
+        final hs = head.cellStyle;
+        hs.bold = true;
+        hs.hAlign = xlsio.HAlignType.center;
+        hs.vAlign = xlsio.VAlignType.center;
+        hs.backColor = '#F2F2F7'; // gris muy claro tipo header iOS
+        hs.fontSize = 11;
+        hs.borders.all.lineStyle = xlsio.LineStyle.thin;
+      }
+
+      // ---------- Datos ----------
       for (int r = 0; r < rows.length; r++) {
         final row = rows[r];
         for (int c = 0; c < headers.length; c++) {
@@ -63,12 +71,12 @@ final class XlsxExporter {
             cell.setText(v.toString());
           }
 
-          // Bordes de datos
+          // Bordes de datos finos, discretos
           cell.cellStyle.borders.all.lineStyle = xlsio.LineStyle.hair;
         }
       }
 
-      // Formatos automáticos por nombre de columna
+      // ---------- Formatos automáticos por nombre de columna ----------
       for (int c = 0; c < headers.length; c++) {
         final name = headers[c].toLowerCase();
         final dataRange = ws.getRangeByIndex(
@@ -90,6 +98,7 @@ final class XlsxExporter {
         }
       }
 
+      // ---------- AutoFit ----------
       if (autoFit) {
         final range = ws.getRangeByIndex(
           1,
@@ -99,9 +108,17 @@ final class XlsxExporter {
         );
         range.autoFitColumns();
         range.autoFitRows();
+
+        // ancho mínimo cómodo
+        for (var c = 1; c <= (headers.isEmpty ? 1 : headers.length); c++) {
+          final col = ws.getRangeByIndex(1, c);
+          if (col.columnWidth < 12) {
+            col.columnWidth = 12;
+          }
+        }
       }
 
-      // Syncfusion devuelve List<int>, lo convertimos a Uint8List.
+      // ---------- Generar bytes y guardar ----------
       final bytesList = book.saveAsStream();
       final Uint8List bytes = Uint8List.fromList(bytesList);
 

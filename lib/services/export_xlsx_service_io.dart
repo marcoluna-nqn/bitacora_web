@@ -77,7 +77,6 @@ class ExportXlsxService {
     }
 
     // ---- Congelar fila de encabezados ----
-    // En XlsIO se congela desde un Rango: A2 = primera celda NO congelada.
     sheet.getRangeByName('A2').freezePanes();
 
     // ---- Guardar ----

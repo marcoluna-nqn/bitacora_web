@@ -39,7 +39,10 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.4
 
-  # UX
+  # HTTP para backend CloudStore
+  http: ^1.2.0
+
+  # UX / animaciones
   flutter_animate: ^4.5.2
   animations: ^2.0.11
   lottie: ^3.1.2
@@ -61,7 +64,7 @@ dependencies:
   package_info_plus: ^9.0.0
 
   # Autenticación Google
-  google_sign_in: ^7.2.0
+  google_sign_in: ^6.2.1
 
 dev_dependencies:
   flutter_test:

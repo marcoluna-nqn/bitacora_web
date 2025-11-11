@@ -21,6 +21,7 @@ import 'package:flutter/services.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:geolocator/geolocator.dart' show LocationAccuracy;
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/table_state.dart';
 import '../services/local_store.dart';
@@ -42,6 +43,7 @@ class EditorScreen extends StatefulWidget {
     required this.onToggleTheme,
     required this.sheetId,
   });
+
   final bool isLight;
   final VoidCallback onToggleTheme;
   final String sheetId;
@@ -50,12 +52,14 @@ class EditorScreen extends StatefulWidget {
   State<EditorScreen> createState() => _EditorScreenState();
 }
 
-class _EditorScreenState extends State<EditorScreen> {
+// Nota: agregamos SingleTickerProviderStateMixin para la animación arcoíris.
+class _EditorScreenState extends State<EditorScreen>
+    with SingleTickerProviderStateMixin {
   // Layout
   static const double _indexColW = 56.0;
   static const double _minColW = 90.0;
   static const double _maxColW = 620.0;
-  static const double _rowH = 40.0;
+  static const double _rowH = 44.0; // un poco más alta para dedo cómodo
   static const double _hdrH = 46.0;
   static const double _attBarH = 88.0;
 
@@ -95,11 +99,14 @@ class _EditorScreenState extends State<EditorScreen> {
   bool _syncingH = false;
 
   final _history = History<TableState>(cap: 200);
-  final Debouncer _persistDebounce = Debouncer(const Duration(milliseconds: 250));
+  final Debouncer _persistDebounce =
+  Debouncer(const Duration(milliseconds: 250));
 
   final Map<int, int> _attachCounts = {};
-  final Debouncer _attachDebounce = Debouncer(const Duration(milliseconds: 200));
-  final Debouncer _attUiDebounce = Debouncer(const Duration(milliseconds: 120));
+  final Debouncer _attachDebounce =
+  Debouncer(const Duration(milliseconds: 200));
+  final Debouncer _attUiDebounce =
+  Debouncer(const Duration(milliseconds: 120));
 
   // Barra de adjuntos (fila enfocada)
   List<_AttItem> _attOfFocused = const [];
@@ -108,12 +115,24 @@ class _EditorScreenState extends State<EditorScreen> {
   String? _lastSavedPath; // móvil/escritorio
   String? _lastSavedName; // web/móvil/escritorio
 
+  // Estado de guardado
+  bool _saving = false;
+  DateTime? _lastSavedAt;
+
+  // Controller para animación arcoíris de la toolbar.
+  late final AnimationController _rainbowCtrl;
+
   @override
   void initState() {
     super.initState();
     _state = TableState.empty();
     _colW = List<double>.filled(0, 180);
     _prefix = List<double>.filled(0, 0);
+
+    _rainbowCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 12),
+    )..repeat(); // loop infinito, efecto suave
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -127,6 +146,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
   @override
   void dispose() {
+    _rainbowCtrl.dispose();
     _cellEC.dispose();
     _cellFN.dispose();
     _gridFN.dispose();
@@ -151,9 +171,13 @@ class _EditorScreenState extends State<EditorScreen> {
     if (!mounted) return;
     if (raw == null) {
       final headers = List<String>.generate(_initialCols, (i) => '');
-      final rows = List.generate(_initialRows, (_) => List.filled(_initialCols, ''));
+      final rows = List.generate(
+          _initialRows, (_) => List.filled(_initialCols, ''));
+      final now = DateTime.now();
       setState(() {
-        _state = TableState(headers: headers, rows: rows, savedAt: DateTime.now());
+        _state =
+            TableState(headers: headers, rows: rows, savedAt: now);
+        _lastSavedAt = now;
         _colW = List<double>.filled(headers.length, 180.0);
         _rebuildPrefix();
         _loading = false;
@@ -165,6 +189,7 @@ class _EditorScreenState extends State<EditorScreen> {
     if (!mounted) return;
     setState(() {
       _state = parsed;
+      _lastSavedAt = parsed.savedAt;
       _colW = List<double>.filled(_state.headers.length, 180.0);
       _rebuildPrefix();
       _loading = false;
@@ -188,18 +213,42 @@ class _EditorScreenState extends State<EditorScreen> {
   void _updateState(TableState s, {bool snapshot = true}) {
     setState(() => _state = s);
     if (snapshot) _history.push(s);
-    _persistDebounce(() => _saveCompat(s));
+
+    _persistDebounce(() {
+      if (!mounted) return;
+      setState(() => _saving = true);
+
+      () async {
+        try {
+          await _saveCompat(s);
+          if (!mounted) return;
+          setState(() {
+            _saving = false;
+            _lastSavedAt = DateTime.now();
+          });
+        } catch (_) {
+          if (!mounted) return;
+          setState(() {
+            _saving = false;
+          });
+        }
+      }();
+    });
+
     if (_colW.length != s.headers.length) {
       _resetHdrCtl();
       _colW = List<double>.filled(
         s.headers.length,
         (_lastViewportW > 0 && s.headers.isNotEmpty)
-            ? (_lastViewportW / s.headers.length).clamp(_minColW, _maxColW).toDouble()
+            ? (_lastViewportW / s.headers.length)
+            .clamp(_minColW, _maxColW)
+            .toDouble()
             : 180.0,
       );
       _rebuildPrefix();
       _autoFitOnce = false;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _recomputeVisibleCols());
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _recomputeVisibleCols());
     }
   }
 
@@ -208,6 +257,21 @@ class _EditorScreenState extends State<EditorScreen> {
       c.dispose();
     }
     _hdrCtl.clear();
+  }
+
+  String _formatTimeShort(DateTime d) {
+    final now = DateTime.now();
+    String hhmm(DateTime x) =>
+        '${x.hour.toString().padLeft(2, '0')}:${x.minute.toString().padLeft(2, '0')}';
+
+    if (now.year == d.year &&
+        now.month == d.month &&
+        now.day == d.day) {
+      return 'hoy ${hhmm(d)}';
+    }
+    final day = d.day.toString().padLeft(2, '0');
+    final mon = d.month.toString().padLeft(2, '0');
+    return '$day/$mon ${hhmm(d)}';
   }
 
   // ---------- layout helpers ----------
@@ -222,7 +286,8 @@ class _EditorScreenState extends State<EditorScreen> {
     if (_autoFitOnce || _colW.isEmpty) return;
     final total = _prefix.last;
     if (total >= vw) return;
-    final per = (vw / _colW.length).clamp(_minColW, _maxColW).toDouble();
+    final per =
+    (vw / _colW.length).clamp(_minColW, _maxColW).toDouble();
     setState(() {
       for (int i = 0; i < _colW.length; i++) {
         _colW[i] = per;
@@ -248,7 +313,10 @@ class _EditorScreenState extends State<EditorScreen> {
   void _recomputeVisibleCols([double? viewportW]) {
     if (!mounted) return;
     final hasBody = _hBody.hasClients;
-    final vw = viewportW ?? (hasBody ? _hBody.position.viewportDimension : _lastViewportW);
+    final vw = viewportW ??
+        (hasBody
+            ? _hBody.position.viewportDimension
+            : _lastViewportW);
     if (vw <= 0) return;
     final scrollX = hasBody ? _hBody.offset : 0.0;
     int start = _lowerBound(scrollX) - 1;
@@ -256,13 +324,15 @@ class _EditorScreenState extends State<EditorScreen> {
     final endLimit = scrollX + vw;
     int end = _lowerBound(endLimit);
     if (end > _colW.length) end = _colW.length;
-    start = (start - _bufCols).clamp(0, _colW.isEmpty ? 0 : _colW.length - 1);
+    start = (start - _bufCols)
+        .clamp(0, _colW.isEmpty ? 0 : _colW.length - 1);
     end = (end + _bufCols).clamp(0, _colW.length);
     if (start > end) {
       start = 0;
       end = math.min(_colW.length, 1);
     }
-    final need = start != _firstCol || end - 1 != _lastCol || vw != _lastViewportW;
+    final need =
+        start != _firstCol || end - 1 != _lastCol || vw != _lastViewportW;
     if (!need) return;
     setState(() {
       _firstCol = start;
@@ -334,9 +404,14 @@ class _EditorScreenState extends State<EditorScreen> {
   void _ensureColumn(int index) {
     if (index < _colCount) return;
     final add = index - _colCount + 1;
-    final newH = List<String>.from(_state.headers)..addAll(List.filled(add, ''));
-    final newR = _state.rows.map((r) => (List<String>.from(r)..addAll(List.filled(add, '')))).toList();
-    _updateState(TableState(headers: newH, rows: newR, savedAt: DateTime.now()));
+    final newH = List<String>.from(_state.headers)
+      ..addAll(List.filled(add, ''));
+    final newR = _state.rows
+        .map((r) =>
+    (List<String>.from(r)..addAll(List.filled(add, ''))))
+        .toList();
+    _updateState(TableState(
+        headers: newH, rows: newR, savedAt: DateTime.now()));
   }
 
   void _addColumnRightOfFocus() {
@@ -357,7 +432,8 @@ class _EditorScreenState extends State<EditorScreen> {
     })
         .toList();
 
-    _updateState(TableState(headers: newH, rows: newR, savedAt: DateTime.now()));
+    _updateState(TableState(
+        headers: newH, rows: newR, savedAt: DateTime.now()));
     if (!mounted) return;
     setState(() {
       _colW.insert(c, 180.0);
@@ -367,23 +443,71 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void _addRow() => _updateState(_state.withNewEmptyRow());
 
+  void _addRowAndFocus() {
+    final newIndex = _rowCount;
+    _addRow();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _setFocus(
+        newIndex,
+        _focus.$2.clamp(0, math.max(0, _colCount - 1)),
+      );
+    });
+  }
+
+  void _duplicateRow(int r) {
+    if (_rowCount == 0) return;
+    final src = r.clamp(0, _rowCount - 1);
+
+    final newRows = <List<String>>[];
+    for (var i = 0; i < _rowCount; i++) {
+      newRows.add(_state.rows[i].toList());
+      if (i == src) {
+        newRows.add(_state.rows[i].toList());
+      }
+    }
+
+    _updateState(
+      TableState(
+        headers: _state.headers.toList(),
+        rows: newRows,
+        savedAt: DateTime.now(),
+      ),
+    );
+
+    _setFocus(
+      src + 1,
+      _focus.$2.clamp(0, math.max(0, _colCount - 1)),
+    );
+  }
+
   void _deleteFocusedRow() {
     if (_rowCount <= 1) return;
     final r = _focus.$1.clamp(0, _rowCount - 1);
     final nextRows = <List<String>>[
-      for (int i = 0; i < _rowCount; i++) if (i != r) _state.rows[i].toList(),
+      for (int i = 0; i < _rowCount; i++)
+        if (i != r) _state.rows[i].toList(),
     ];
-    _updateState(TableState(headers: _state.headers.toList(), rows: nextRows, savedAt: DateTime.now()));
+    _updateState(
+      TableState(
+        headers: _state.headers.toList(),
+        rows: nextRows,
+        savedAt: DateTime.now(),
+      ),
+    );
     _setFocus((r - 1).clamp(0, _rowCount - 1), _focus.$2);
   }
 
   void _clearAll() {
     final cols = _state.headers.length;
-    _updateState(TableState(
-      headers: _state.headers.toList(),
-      rows: List.generate(3, (_) => List<String>.filled(cols, '')),
-      savedAt: DateTime.now(),
-    ));
+    _updateState(
+      TableState(
+        headers: _state.headers.toList(),
+        rows: List.generate(
+            3, (_) => List<String>.filled(cols, '')),
+        savedAt: DateTime.now(),
+      ),
+    );
     _resetHdrCtl();
   }
 
@@ -407,7 +531,9 @@ class _EditorScreenState extends State<EditorScreen> {
     r = r.clamp(0, math.max(0, _rowCount - 1));
     c = c.clamp(0, math.max(0, _colCount - 1));
     final next = (r, c);
-    if (_isEditing) _commitCell(_focus.$1, _focus.$2, _cellEC.text);
+    if (_isEditing) {
+      _commitCell(_focus.$1, _focus.$2, _cellEC.text);
+    }
     if (_focus == next && !_isEditing) {
       _gridFN.requestFocus();
       return;
@@ -430,7 +556,10 @@ class _EditorScreenState extends State<EditorScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _cellFN.requestFocus();
-      _cellEC.selection = TextSelection(baseOffset: 0, extentOffset: _cellEC.text.length);
+      _cellEC.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _cellEC.text.length,
+      );
     });
   }
 
@@ -464,7 +593,8 @@ class _EditorScreenState extends State<EditorScreen> {
       if (!mounted) return;
       _cellEC
         ..text = ch
-        ..selection = TextSelection.collapsed(offset: ch.length);
+        ..selection =
+        TextSelection.collapsed(offset: ch.length);
     });
   }
 
@@ -474,28 +604,37 @@ class _EditorScreenState extends State<EditorScreen> {
     if (existing != null) return existing;
     final ctl = TextEditingController(text: _state.headers[col]);
     ctl.addListener(() {
-      final newH = List<String>.from(_state.headers)..[col] = ctl.text;
-      _updateState(_state.withHeaders(newH), snapshot: false);
+      final newH = List<String>.from(_state.headers)
+        ..[col] = ctl.text;
+      _updateState(
+        _state.withHeaders(newH),
+        snapshot: false,
+      );
     });
     _hdrCtl[col] = ctl;
     return ctl;
   }
 
   void _autoFitCol(int c) {
-    final cellStyle = Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
+    final cellStyle =
+        Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
     const hdrStyle = TextStyle(fontWeight: FontWeight.w700);
     double maxW = 0;
-    final hdr = _state.headers[c].isEmpty ? 'Col ${c + 1}' : _state.headers[c];
+    final hdr = _state.headers[c].isEmpty
+        ? 'Col ${c + 1}'
+        : _state.headers[c];
     maxW = math.max(maxW, _measureText(hdr, hdrStyle));
     for (final r in _state.rows) {
       maxW = math.max(maxW, _measureText(r[c], cellStyle));
     }
-    final target = (maxW + 28.0).clamp(_minColW, _maxColW).toDouble();
+    final target =
+    (maxW + 28.0).clamp(_minColW, _maxColW).toDouble();
     setState(() {
       _colW[c] = target;
       _rebuildPrefix();
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _recomputeVisibleCols());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _recomputeVisibleCols());
   }
 
   double _measureText(String text, TextStyle style) {
@@ -521,12 +660,20 @@ class _EditorScreenState extends State<EditorScreen> {
       final top = r * _rowH;
       final bottom = top + _rowH;
       final viewTop = _vBody.offset;
-      final viewBottom = viewTop + _vBody.position.viewportDimension;
+      final viewBottom =
+          viewTop + _vBody.position.viewportDimension;
       if (top < viewTop) {
-        _vBody.animateTo(top, duration: const Duration(milliseconds: 120), curve: Curves.easeOut);
+        _vBody.animateTo(
+          top,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+        );
       } else if (bottom > viewBottom) {
-        _vBody.animateTo(bottom - _vBody.position.viewportDimension,
-            duration: const Duration(milliseconds: 120), curve: Curves.easeOut);
+        _vBody.animateTo(
+          bottom - _vBody.position.viewportDimension,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+        );
       }
     }
     if (_hBody.hasClients) {
@@ -535,9 +682,17 @@ class _EditorScreenState extends State<EditorScreen> {
       final vx = _hBody.offset;
       final vw = _hBody.position.viewportDimension;
       if (x < vx) {
-        _hBody.animateTo(x, duration: const Duration(milliseconds: 120), curve: Curves.easeOut);
+        _hBody.animateTo(
+          x,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+        );
       } else if (x + w > vx + vw) {
-        _hBody.animateTo(x + w - vw, duration: const Duration(milliseconds: 120), curve: Curves.easeOut);
+        _hBody.animateTo(
+          x + w - vw,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+        );
       }
     }
   }
@@ -546,9 +701,11 @@ class _EditorScreenState extends State<EditorScreen> {
   Future<void> _refreshAttachForVisible() async {
     if (_rowCount == 0) return;
     final start = _firstVisibleRow();
-    final end = math.min(_rowCount - 1, start + _visibleRowCount() + 4);
+    final end = math.min(
+        _rowCount - 1, start + _visibleRowCount() + 4);
     for (var r = start; r <= end; r++) {
-      final xs = await AttachmentsServiceWeb.I.listFor(sheetId: widget.sheetId, row: r);
+      final xs = await AttachmentsServiceWeb.I
+          .listFor(sheetId: widget.sheetId, row: r);
       if (!mounted) return;
       final n = xs.length;
       if (_attachCounts[r] != n) {
@@ -558,7 +715,8 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Future<void> _refreshAttachRow(int r) async {
-    final xs = await AttachmentsServiceWeb.I.listFor(sheetId: widget.sheetId, row: r);
+    final xs = await AttachmentsServiceWeb.I
+        .listFor(sheetId: widget.sheetId, row: r);
     if (!mounted) return;
     setState(() => _attachCounts[r] = xs.length);
   }
@@ -566,7 +724,11 @@ class _EditorScreenState extends State<EditorScreen> {
   int _firstVisibleRow() {
     if (!_vBody.hasClients) return 0;
     final off = _vBody.offset;
-    return off <= 0 ? 0 : (off / _rowH).floor().clamp(0, _rowCount - 1);
+    return off <= 0
+        ? 0
+        : (off / _rowH)
+        .floor()
+        .clamp(0, _rowCount - 1);
   }
 
   int _visibleRowCount() {
@@ -601,15 +763,20 @@ class _EditorScreenState extends State<EditorScreen> {
         ..write(fix.latitude.toStringAsFixed(6))
         ..write(', ')
         ..write(fix.longitude.toStringAsFixed(6));
-      if (fix.accuracyMeters != null && fix.accuracyMeters! > 0) {
-        buf.write(' ±${fix.accuracyMeters!.toStringAsFixed(0)} m');
+      if (fix.accuracyMeters != null &&
+          fix.accuracyMeters! > 0) {
+        buf.write(
+            ' ±${fix.accuracyMeters!.toStringAsFixed(0)} m');
       }
-      _updateState(_state.withCell(r, cTarget, buf.toString()));
+      _updateState(
+          _state.withCell(r, cTarget, buf.toString()));
       _setFocus(r, cTarget);
-      messenger?.showSnackBar(const SnackBar(content: Text('Ubicación insertada')));
+      messenger?.showSnackBar(const SnackBar(
+          content: Text('Ubicación insertada')));
     } catch (e) {
       if (!mounted) return;
-      messenger?.showSnackBar(SnackBar(content: Text('Error de ubicación: $e')));
+      messenger?.showSnackBar(
+          SnackBar(content: Text('Error de ubicación: $e')));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -630,10 +797,12 @@ class _EditorScreenState extends State<EditorScreen> {
     final messenger = ScaffoldMessenger.maybeOf(context);
     setState(() => _busy = true);
     try {
-      final ok = await SpeechService.I.init(preferredLocale: 'es_AR');
+      final ok = await SpeechService.I.init(
+          preferredLocale: 'es_AR');
       if (!mounted) return;
       if (!ok) {
-        messenger?.showSnackBar(const SnackBar(content: Text('Micrófono no disponible')));
+        messenger?.showSnackBar(const SnackBar(
+            content: Text('Micrófono no disponible')));
         return;
       }
       final text = await SpeechService.I.listenOnce(
@@ -642,15 +811,67 @@ class _EditorScreenState extends State<EditorScreen> {
       );
       if (!mounted) return;
       if (text != null && text.trim().isNotEmpty) {
-        _updateState(_state.withCell(r, cTarget, text.trim()));
+        _updateState(_state.withCell(
+            r, cTarget, text.trim()));
         _setFocus(r, cTarget);
       }
     } catch (e) {
       if (!mounted) return;
-      messenger?.showSnackBar(SnackBar(content: Text('Error dictado: $e')));
+      messenger?.showSnackBar(
+          SnackBar(content: Text('Error dictado: $e')));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _openLocationForCell(int r, int c) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final txt = _state.rows[r][c];
+    final link = _mapsLinkOrNull(txt);
+    if (link == null) {
+      messenger?.showSnackBar(const SnackBar(
+        content:
+        Text('La celda no contiene una ubicación reconocible'),
+      ));
+      return;
+    }
+    try {
+      final uri = Uri.parse(link);
+      final ok = await canLaunchUrl(uri);
+      if (!ok) {
+        messenger?.showSnackBar(const SnackBar(
+          content: Text('No se pudo abrir el mapa'),
+        ));
+        return;
+      }
+      await launchUrl(uri);
+    } catch (e) {
+      messenger?.showSnackBar(
+        SnackBar(content: Text('Error abriendo mapa: $e')),
+      );
+    }
+  }
+
+  void _copyLocationForCell(int r, int c) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final txt = _state.rows[r][c];
+    final link = _mapsLinkOrNull(txt);
+    if (link == null) {
+      messenger?.showSnackBar(const SnackBar(
+        content:
+        Text('La celda no contiene una ubicación reconocible'),
+      ));
+      return;
+    }
+    var coords = link;
+    final idx = link.indexOf('?q=');
+    if (idx != -1 && idx + 3 < link.length) {
+      coords = link.substring(idx + 3);
+    }
+    Clipboard.setData(ClipboardData(text: coords));
+    messenger?.showSnackBar(
+      const SnackBar(content: Text('Ubicación copiada')),
+    );
   }
 
   // ---------- export XLSX + correo/compartir ----------
@@ -663,18 +884,22 @@ class _EditorScreenState extends State<EditorScreen> {
       final ts = _timestamp();
       final baseName = 'Gridnote_$ts';
 
-      final savedPath = await saveXlsx(baseName, bytes); // path en móvil/escritorio, null en Web
+      final savedPath = await saveXlsx(baseName, bytes);
       _lastSavedPath = savedPath;
       _lastSavedName = '$baseName.xlsx';
 
       if (!mounted) return;
       final msg = kIsWeb
           ? 'Descargado: $_lastSavedName'
-          : (savedPath != null ? 'Guardado: $savedPath' : 'Guardado');
-      messenger?.showSnackBar(SnackBar(content: Text(msg)));
+          : (savedPath != null
+          ? 'Guardado: $savedPath'
+          : 'Guardado');
+      messenger?.showSnackBar(
+          SnackBar(content: Text(msg)));
     } catch (e) {
       if (mounted) {
-        messenger?.showSnackBar(SnackBar(content: Text('Error exportando: $e')));
+        messenger?.showSnackBar(SnackBar(
+            content: Text('Error exportando: $e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -690,21 +915,26 @@ class _EditorScreenState extends State<EditorScreen> {
         await _exportXlsx();
         if (!mounted) return;
       }
-      final subject = 'Mediciones Gridnote ${DateTime.now().toIso8601String().substring(0, 10)}';
-      final bodyBase = 'Adjunto XLSX generado desde Gridnote.';
+      final subject =
+          'Mediciones Gridnote ${DateTime.now().toIso8601String().substring(0, 10)}';
+      const bodyBase =
+          'Adjunto XLSX generado desde Gridnote.';
 
       if (kIsWeb) {
         final body = _lastSavedName != null
             ? '$bodyBase\n\nAdjuntá manualmente: ${_lastSavedName!}'
             : bodyBase;
         await mail.sendMailWithFile(
-          filePath: _lastSavedName ?? 'gridnote.xlsx', // usado solo como nombre en Web
+          filePath: _lastSavedName ?? 'gridnote.xlsx',
           subject: subject,
           body: body,
         );
         if (!mounted) return;
         messenger?.showSnackBar(
-          const SnackBar(content: Text('Se abrió el correo. Adjuntá el archivo descargado.')),
+          const SnackBar(
+            content: Text(
+                'Se abrió el correo. Adjuntá el archivo descargado.'),
+          ),
         );
       } else {
         if (_lastSavedPath == null) {
@@ -720,7 +950,8 @@ class _EditorScreenState extends State<EditorScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      messenger?.showSnackBar(SnackBar(content: Text('Error correo/compartir: $e')));
+      messenger?.showSnackBar(SnackBar(
+          content: Text('Error correo/compartir: $e')));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -752,18 +983,24 @@ class _EditorScreenState extends State<EditorScreen> {
       // rows
       for (var r = 0; r < _rowCount; r++) {
         final row = _state.rows[r];
-        for (var c = 0; c < _colCount && c < row.length; c++) {
+        for (var c = 0;
+        c < _colCount && c < row.length;
+        c++) {
           final v = row[c];
           final cell = sh.getRangeByIndex(r + 2, c + 1);
           final link = _mapsLinkOrNull(v);
           if (link != null) {
             cell.setText(v);
-            sh.hyperlinks.add(cell, xlsio.HyperlinkType.url, link);
+            sh.hyperlinks.add(
+                cell, xlsio.HyperlinkType.url, link);
           } else {
             final raw = v.trim();
-            final normalized = raw.replaceAll(',', '.');
+            final normalized =
+            raw.replaceAll(',', '.');
             final d = double.tryParse(normalized);
-            if (d != null && raw.isNotEmpty && !raw.contains(' ')) {
+            if (d != null &&
+                raw.isNotEmpty &&
+                !raw.contains(' ')) {
               cell.setNumber(d);
             } else {
               cell.setText(v);
@@ -783,9 +1020,13 @@ class _EditorScreenState extends State<EditorScreen> {
       // fotos por fila
       final Map<int, List<Uint8List>> byRow = {};
       for (var r = 0; r < _rowCount; r++) {
-        final xs = await AttachmentsServiceWeb.I.listFor(sheetId: widget.sheetId, row: r);
+        final xs = await AttachmentsServiceWeb.I
+            .listFor(sheetId: widget.sheetId, row: r);
         final imgs = xs
-            .where((a) => (a as dynamic).mime.toLowerCase().startsWith('image/'))
+            .where((a) => (a as dynamic)
+            .mime
+            .toLowerCase()
+            .startsWith('image/'))
             .map((a) => (a as dynamic).bytes as Uint8List)
             .toList();
         if (imgs.isNotEmpty) byRow[r] = imgs;
@@ -794,12 +1035,14 @@ class _EditorScreenState extends State<EditorScreen> {
       final firstPhotoCol = _colCount + 1;
       const double kWpx = 160;
       const double kHpx = 120;
-      final rowHeightsPx = List<double>.filled(_rowCount, 0);
+      final rowHeightsPx =
+      List<double>.filled(_rowCount, 0);
 
       if (maxPhotos > 0) {
         for (var p = 0; p < maxPhotos; p++) {
           final col = firstPhotoCol + p;
-          sh.getRangeByIndex(1, col).setText('Foto ${p + 1}');
+          sh.getRangeByIndex(1, col)
+              .setText('Foto ${p + 1}');
           final st = sh.getRangeByIndex(1, col).cellStyle;
           st.bold = true;
           st.hAlign = xlsio.HAlignType.center;
@@ -807,13 +1050,16 @@ class _EditorScreenState extends State<EditorScreen> {
           _columnRange(sh, col).columnWidth = 22.0;
         }
         byRow.forEach((r, list) {
-          final take = math.min(list.length, maxPhotos);
+          final take =
+          math.min(list.length, maxPhotos);
           for (var p = 0; p < take; p++) {
             final col = firstPhotoCol + p;
-            final pic = sh.pictures.addStream(r + 2, col, list[p]);
+            final pic = sh.pictures
+                .addStream(r + 2, col, list[p]);
             pic.width = kWpx.toInt();
             pic.height = kHpx.toInt();
-            rowHeightsPx[r] = math.max(rowHeightsPx[r], kHpx + 8);
+            rowHeightsPx[r] =
+                math.max(rowHeightsPx[r], kHpx + 8);
           }
         });
         for (var r = 0; r < _rowCount; r++) {
@@ -830,8 +1076,10 @@ class _EditorScreenState extends State<EditorScreen> {
       final lastRow = _rowCount + 1;
       if (lastCol > 0 && lastRow > 0) {
         try {
-          final used = sh.getRangeByIndex(1, 1, lastRow, lastCol);
-          used.cellStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
+          final used =
+          sh.getRangeByIndex(1, 1, lastRow, lastCol);
+          used.cellStyle.borders.all.lineStyle =
+              xlsio.LineStyle.thin;
         } catch (_) {}
       }
       for (var c = 1; c <= _colCount; c++) {
@@ -844,7 +1092,8 @@ class _EditorScreenState extends State<EditorScreen> {
         }
       }
       try {
-        sh.tableCollection.create('Datos', sh.getRangeByIndex(1, 1, lastRow, lastCol));
+        sh.tableCollection
+            .create('Datos', sh.getRangeByIndex(1, 1, lastRow, lastCol));
       } catch (_) {}
 
       final list = book.saveAsStream();
@@ -857,7 +1106,7 @@ class _EditorScreenState extends State<EditorScreen> {
   static String? _mapsLinkOrNull(String? t) {
     if (t == null) return null;
     final re = RegExp(
-      r'^\\s*(-?\\d+(?:\\.\\d+)?),\\s*(-?\\d+(?:\\.\\d+)?)(?:\\s*[±+]\\s*\\d+\\s*m)?\\s*$',
+      r'^\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)(?:\s*[±+]\s*\d+\s*m)?\s*$',
       caseSensitive: false,
     );
     final m = re.firstMatch(t.trim());
@@ -868,21 +1117,24 @@ class _EditorScreenState extends State<EditorScreen> {
     return 'https://maps.google.com/?q=$lat,$lon';
   }
 
-  static int _maxPhotos(Map<int, List<Uint8List>> byRow, int maxPerRow) {
+  static int _maxPhotos(
+      Map<int, List<Uint8List>> byRow, int maxPerRow) {
     var m = 0;
     byRow.forEach((_, list) {
-      if (list.isNotEmpty) m = math.max(m, list.length);
+      if (list.isNotEmpty) {
+        m = math.max(m, list.length);
+      }
     });
     return math.min(m, math.max(0, maxPerRow));
   }
 
   static xlsio.Range _columnRange(xlsio.Worksheet sh, int col) {
-    final name = '\${_colName(col)}:\${_colName(col)}';
+    final name = '${_colName(col)}:${_colName(col)}';
     return sh.getRangeByName(name);
   }
 
   static xlsio.Range _rowRange(xlsio.Worksheet sh, int row) {
-    final name = '\$row:\$row';
+    final name = '$row:$row';
     return sh.getRangeByName(name);
   }
 
@@ -900,7 +1152,7 @@ class _EditorScreenState extends State<EditorScreen> {
   static String _timestamp() {
     final d = DateTime.now();
     String t(int n) => n.toString().padLeft(2, '0');
-    return '\${d.year}\${t(d.month)}\${t(d.day)}_\${t(d.hour)}\${t(d.minute)}\${t(d.second)}';
+    return '${d.year}${t(d.month)}${t(d.day)}_${t(d.hour)}${t(d.minute)}${t(d.second)}';
   }
 
   // ---------- UI ----------
@@ -913,91 +1165,11 @@ class _EditorScreenState extends State<EditorScreen> {
         centerTitle: false,
         actions: [
           IconButton(
-            tooltip: 'Adjuntar a la fila',
-            icon: const Icon(Icons.attach_file),
-            onPressed: _pickAttachmentsForFocusedRow,
-          ),
-          const SizedBox(width: 4),
-          IconButton(
-            tooltip: 'GPS en celda',
-            icon: const Icon(Icons.my_location),
-            onPressed: _busy ? null : _insertGpsHere,
-          ),
-          IconButton(
-            tooltip: 'Dictar en celda',
-            icon: const Icon(Icons.mic_none),
-            onPressed: _busy ? null : _dictateHere,
-          ),
-          PopupMenuButton<String>(
-            tooltip: 'Más inserciones',
-            icon: const Icon(Icons.more_horiz),
-            onSelected: (v) {
-              if (v == 'gps_r') _insertGpsRight();
-              if (v == 'mic_r') _dictateRight();
-            },
-            itemBuilder: (c) => const [
-              PopupMenuItem(value: 'gps_r', child: ListTile(leading: Icon(Icons.place), title: Text('GPS a la derecha'))),
-              PopupMenuItem(value: 'mic_r', child: ListTile(leading: Icon(Icons.keyboard_voice), title: Text('Dictar a la derecha'))),
-            ],
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            tooltip: 'Nueva fila',
-            icon: const Icon(Icons.add),
-            onPressed: _addRow,
-          ),
-          IconButton(
-            tooltip: 'Nueva columna',
-            icon: const Icon(Icons.view_week_outlined),
-            onPressed: _addColumnRightOfFocus,
-          ),
-          IconButton(
-            tooltip: 'Borrar fila',
-            icon: const Icon(Icons.delete_outline),
-            onPressed: _deleteFocusedRow,
-          ),
-          const SizedBox(width: 6),
-          IconButton(tooltip: 'Deshacer', icon: const Icon(Icons.undo), onPressed: _undo),
-          IconButton(tooltip: 'Rehacer', icon: const Icon(Icons.redo), onPressed: _redo),
-          const SizedBox(width: 6),
-          IconButton(
-            tooltip: 'Backup JSON',
-            icon: const Icon(Icons.download),
-            onPressed: () => LocalStore.downloadBackup(_state),
-          ),
-          IconButton(
-            tooltip: 'Importar JSON',
-            icon: const Icon(Icons.upload_file),
-            onPressed: _importBackup,
-          ),
-          PopupMenuButton<String>(
-            tooltip: 'Herramientas',
-            icon: const Icon(Icons.settings_outlined),
-            onSelected: (v) {
-              if (v == 'clear') _clearAll();
-            },
-            itemBuilder: (c) => const [
-              PopupMenuItem(
-                value: 'clear',
-                child: ListTile(leading: Icon(Icons.cleaning_services), title: Text('Limpiar planilla')),
-              ),
-            ],
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            tooltip: 'Exportar XLSX',
-            icon: const Icon(Icons.table_view),
-            onPressed: _busy ? null : _exportXlsx,
-          ),
-          IconButton(
-            tooltip: 'Enviar/Compartir',
-            icon: const Icon(Icons.send),
-            onPressed: _busy ? null : _sendEmail,
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            tooltip: widget.isLight ? 'Modo oscuro' : 'Modo claro',
-            icon: Icon(widget.isLight ? Icons.dark_mode : Icons.light_mode),
+            tooltip:
+            widget.isLight ? 'Modo oscuro' : 'Modo claro',
+            icon: Icon(widget.isLight
+                ? Icons.dark_mode
+                : Icons.light_mode),
             onPressed: widget.onToggleTheme,
           ),
           const SizedBox(width: 6),
@@ -1010,6 +1182,7 @@ class _EditorScreenState extends State<EditorScreen> {
         child: Column(
           children: [
             _buildHeader(cs),
+            _buildToolbar(cs),
             _buildAttachmentsBar(cs),
             const Divider(height: 1),
             Expanded(child: _buildBody(cs)),
@@ -1019,7 +1192,7 @@ class _EditorScreenState extends State<EditorScreen> {
       floatingActionButton: _loading
           ? null
           : FloatingActionButton.extended(
-        onPressed: _addRow,
+        onPressed: _addRowAndFocus,
         label: const Text('Fila'),
         icon: const Icon(Icons.add),
       ),
@@ -1027,7 +1200,8 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Widget _buildHeader(ColorScheme cs) {
-    final bg = Theme.of(context).brightness == Brightness.light
+    final bg =
+    Theme.of(context).brightness == Brightness.light
         ? const Color(0xFFF7F7FA)
         : const Color(0xFF111827);
     return Container(
@@ -1039,19 +1213,29 @@ class _EditorScreenState extends State<EditorScreen> {
           Expanded(
             child: LayoutBuilder(
               builder: (_, cons) {
-                final vw = cons.maxWidth > 0 ? cons.maxWidth : MediaQuery.of(context).size.width;
+                final vw = cons.maxWidth > 0
+                    ? cons.maxWidth
+                    : MediaQuery.of(context).size.width;
                 _scheduleViewportOps(vw);
                 return SingleChildScrollView(
                   controller: _hHdr,
                   scrollDirection: Axis.horizontal,
                   child: SizedBox(
-                    width: _prefix.isEmpty ? vw : math.max(_prefix.last, vw),
+                    width: _prefix.isEmpty
+                        ? vw
+                        : math.max(_prefix.last, vw),
                     height: _hdrH,
                     child: Row(
                       children: [
-                        SizedBox(width: _sumRange(0, _firstCol)),
-                        for (int c = _firstCol; c <= _lastCol; c++) _headerCell(c, cs, bg),
-                        SizedBox(width: _sumRange(_lastCol + 1, _colCount)),
+                        SizedBox(
+                            width: _sumRange(0, _firstCol)),
+                        for (int c = _firstCol;
+                        c <= _lastCol;
+                        c++)
+                          _headerCell(c, cs, bg),
+                        SizedBox(
+                            width: _sumRange(
+                                _lastCol + 1, _colCount)),
                       ],
                     ),
                   ),
@@ -1064,6 +1248,191 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
+  // ---------- Toolbar scrolleable con animación arcoíris ----------
+  Widget _buildToolbar(ColorScheme cs) {
+    final toolbarChild = ListView(
+      scrollDirection: Axis.horizontal,
+      padding:
+      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      children: [
+        _toolbarButton(
+          cs,
+          icon: Icons.attach_file,
+          label: 'Adjuntar',
+          onTap: _pickAttachmentsForFocusedRow,
+        ),
+        _toolbarButton(
+          cs,
+          icon: Icons.my_location,
+          label: 'GPS aquí',
+          onTap: _busy ? null : _insertGpsHere,
+        ),
+        _toolbarButton(
+          cs,
+          icon: Icons.place,
+          label: 'GPS der.',
+          onTap: _busy ? null : _insertGpsRight,
+        ),
+        _toolbarButton(
+          cs,
+          icon: Icons.mic_none,
+          label: 'Dictar aquí',
+          onTap: _busy ? null : _dictateHere,
+        ),
+        _toolbarButton(
+          cs,
+          icon: Icons.keyboard_voice_outlined,
+          label: 'Dictar der.',
+          onTap: _busy ? null : _dictateRight,
+        ),
+        _toolbarButton(
+          cs,
+          icon: Icons.add,
+          label: 'Fila',
+          onTap: _addRowAndFocus,
+        ),
+        _toolbarButton(
+          cs,
+          icon: Icons.view_week_outlined,
+          label: 'Columna',
+          onTap: _addColumnRightOfFocus,
+        ),
+        _toolbarButton(
+          cs,
+          icon: Icons.delete_outline,
+          label: 'Borrar fila',
+          onTap: _deleteFocusedRow,
+        ),
+        _toolbarButton(
+          cs,
+          icon: Icons.undo,
+          label: 'Deshacer',
+          onTap: _undo,
+        ),
+        _toolbarButton(
+          cs,
+          icon: Icons.redo,
+          label: 'Rehacer',
+          onTap: _redo,
+        ),
+        _toolbarButton(
+          cs,
+          icon: Icons.download,
+          label: 'Backup',
+          onTap: () => LocalStore.downloadBackup(_state),
+        ),
+        _toolbarButton(
+          cs,
+          icon: Icons.upload_file,
+          label: 'Importar',
+          onTap: _importBackup,
+        ),
+        _toolbarButton(
+          cs,
+          icon: Icons.cleaning_services,
+          label: 'Limpiar',
+          onTap: _clearAll,
+        ),
+        _toolbarButton(
+          cs,
+          icon: Icons.table_view,
+          label: 'XLSX',
+          onTap: _busy ? null : _exportXlsx,
+        ),
+        _toolbarButton(
+          cs,
+          icon: Icons.send,
+          label: 'Enviar',
+          onTap: _busy ? null : _sendEmail,
+        ),
+      ],
+    );
+
+    return AnimatedBuilder(
+      animation: _rainbowCtrl,
+      builder: (context, child) {
+        return Container(
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: const [
+                Colors.red,
+                Colors.orange,
+                Colors.yellow,
+                Colors.green,
+                Colors.cyan,
+                Colors.blue,
+                Colors.indigo,
+                Colors.purple,
+                Colors.red,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              transform: GradientRotation(
+                  2 * math.pi * _rainbowCtrl.value),
+            ),
+            border: Border(
+              bottom: BorderSide(
+                color: Theme.of(context)
+                    .dividerColor
+                    .withOpacity(0.7),
+              ),
+            ),
+          ),
+          child: child,
+        );
+      },
+      child: toolbarChild,
+    );
+  }
+
+  Widget _toolbarButton(
+      ColorScheme cs, {
+        required IconData icon,
+        required String label,
+        required VoidCallback? onTap,
+      }) {
+    final enabled = onTap != null;
+    final primary = cs.onPrimary;
+    final fg = enabled ? primary : Colors.white70;
+    final bg =
+    enabled ? Colors.black.withOpacity(0.12) : Colors.black26;
+    final borderColor =
+    Colors.white.withOpacity(0.35);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+              horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: borderColor, width: 0.8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: fg),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: fg,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _indexHeader(ColorScheme cs) {
     return Container(
       width: _indexColW,
@@ -1071,16 +1440,22 @@ class _EditorScreenState extends State<EditorScreen> {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: Theme.of(context).dividerColor),
-          right: BorderSide(color: Theme.of(context).dividerColor),
+          bottom: BorderSide(
+              color: Theme.of(context).dividerColor),
+          right: BorderSide(
+              color: Theme.of(context).dividerColor),
         ),
       ),
-      child: const Text('#', style: TextStyle(fontWeight: FontWeight.w700)),
+      child: const Text(
+        '#',
+        style: TextStyle(fontWeight: FontWeight.w700),
+      ),
     );
   }
 
   Widget _headerCell(int c, ColorScheme cs, Color bg) {
-    final titleColor = Theme.of(context).textTheme.titleMedium?.color;
+    final titleColor =
+        Theme.of(context).textTheme.titleMedium?.color;
     final hintColor = titleColor?.withOpacity(0.55);
     final w = _colW[c];
     final ctl = _hdrController(c);
@@ -1093,12 +1468,15 @@ class _EditorScreenState extends State<EditorScreen> {
             right: 10,
             child: Container(
               alignment: Alignment.centerLeft,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 color: bg.withOpacity(0.95),
                 border: Border(
-                  bottom: BorderSide(color: Theme.of(context).dividerColor),
-                  right: BorderSide(color: Theme.of(context).dividerColor),
+                  bottom: BorderSide(
+                      color: Theme.of(context).dividerColor),
+                  right: BorderSide(
+                      color: Theme.of(context).dividerColor),
                 ),
               ),
               child: TextField(
@@ -1109,9 +1487,13 @@ class _EditorScreenState extends State<EditorScreen> {
                   isDense: true,
                   border: InputBorder.none,
                   hintText: 'Col ${c + 1}',
-                  hintStyle: TextStyle(fontWeight: FontWeight.w600, color: hintColor),
+                  hintStyle: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: hintColor,
+                  ),
                 ),
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w700),
                 onSubmitted: (_) => _setFocus(0, c),
               ),
             ),
@@ -1123,15 +1505,20 @@ class _EditorScreenState extends State<EditorScreen> {
             child: SizedBox(
               width: 10,
               child: MouseRegion(
-                cursor: SystemMouseCursors.resizeLeftRight,
+                cursor:
+                SystemMouseCursors.resizeLeftRight,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onHorizontalDragUpdate: (d) {
                     setState(() {
-                      _colW[c] = (_colW[c] + d.delta.dx).clamp(_minColW, _maxColW).toDouble();
+                      _colW[c] = (_colW[c] + d.delta.dx)
+                          .clamp(_minColW, _maxColW)
+                          .toDouble();
                       _rebuildPrefix();
                     });
-                    WidgetsBinding.instance.addPostFrameCallback((_) => _recomputeVisibleCols());
+                    WidgetsBinding.instance
+                        .addPostFrameCallback(
+                            (_) => _recomputeVisibleCols());
                   },
                   onDoubleTap: () => _autoFitCol(c),
                 ),
@@ -1145,7 +1532,8 @@ class _EditorScreenState extends State<EditorScreen> {
 
   // ---------- Barra de adjuntos ----------
   Widget _buildAttachmentsBar(ColorScheme cs) {
-    final bg = Theme.of(context).brightness == Brightness.light
+    final bg =
+    Theme.of(context).brightness == Brightness.light
         ? const Color(0xFFF9FAFB)
         : const Color(0xFF0D1320);
     final r = _focus.$1;
@@ -1153,23 +1541,40 @@ class _EditorScreenState extends State<EditorScreen> {
     return Container(
       height: _attBarH,
       color: bg,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding:
+      const EdgeInsets.symmetric(horizontal: 10),
       child: Row(
         children: [
           SizedBox(
             width: _indexColW,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment:
+              MainAxisAlignment.center,
               children: [
-                Text('Fila', style: TextStyle(fontSize: 11, color: Theme.of(context).hintColor)),
-                Text('${r + 1}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                  'Fila',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).hintColor,
+                  ),
+                ),
+                Text(
+                  '${r + 1}',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 4),
                 InkWell(
                   onTap: _pickAttachmentsForFocusedRow,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius:
+                  BorderRadius.circular(6),
                   child: Padding(
                     padding: const EdgeInsets.all(4.0),
-                    child: Icon(Icons.add_photo_alternate, size: 18, color: cs.primary),
+                    child: Icon(
+                      Icons.add_photo_alternate,
+                      size: 18,
+                      color: cs.primary,
+                    ),
                   ),
                 ),
               ],
@@ -1179,57 +1584,153 @@ class _EditorScreenState extends State<EditorScreen> {
           Expanded(
             child: _attLoading
                 ? const Align(
-                alignment: Alignment.centerLeft,
-                child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2),
+              ),
+            )
                 : (cnt == 0
                 ? Row(
               children: [
-                Icon(Icons.photo_library_outlined, size: 18, color: Theme.of(context).hintColor),
+                Icon(
+                  Icons.photo_library_outlined,
+                  size: 18,
+                  color: Theme.of(context)
+                      .hintColor,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Sin fotos en la fila ${r + 1}. Tocá el ícono para adjuntar.',
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Theme.of(context).hintColor),
+                    overflow:
+                    TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Theme.of(context)
+                          .hintColor,
+                    ),
                   ),
                 ),
                 TextButton.icon(
-                  onPressed: _pickAttachmentsForFocusedRow,
-                  icon: const Icon(Icons.attach_file, size: 18),
-                  label: const Text('Adjuntar'),
+                  onPressed:
+                  _pickAttachmentsForFocusedRow,
+                  icon: const Icon(
+                      Icons.attach_file,
+                      size: 18),
+                  label:
+                  const Text('Adjuntar'),
                 ),
               ],
             )
                 : SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
+              scrollDirection:
+              Axis.horizontal,
               child: Row(
                 children: [
-                  for (int i = 0; i < _attOfFocused.length; i++) _thumb(_attOfFocused[i], i),
+                  for (int i = 0;
+                  i < _attOfFocused.length;
+                  i++)
+                    _thumb(_attOfFocused[i], i),
                   const SizedBox(width: 6),
                   OutlinedButton.icon(
-                    onPressed: _pickAttachmentsForFocusedRow,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Agregar'),
-                    style: OutlinedButton.styleFrom(minimumSize: const Size(96, 36)),
+                    onPressed:
+                    _pickAttachmentsForFocusedRow,
+                    icon: const Icon(
+                        Icons.add),
+                    label:
+                    const Text('Agregar'),
+                    style:
+                    OutlinedButton.styleFrom(
+                      minimumSize:
+                      const Size(96, 36),
+                    ),
                   ),
                 ],
               ),
             )),
           ),
           const SizedBox(width: 6),
+          _buildStatusPill(cs),
+          const SizedBox(width: 6),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: cs.primary,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius:
+              BorderRadius.circular(12),
             ),
             child: Row(
               children: [
-                const Icon(Icons.attach_file, size: 14, color: Colors.white),
+                const Icon(
+                  Icons.attach_file,
+                  size: 14,
+                  color: Colors.white,
+                ),
                 const SizedBox(width: 4),
-                Text('$cnt', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                Text(
+                  '$cnt',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusPill(ColorScheme cs) {
+    String text;
+    IconData icon;
+
+    if (_saving) {
+      text = 'Guardando';
+      icon = Icons.sync;
+    } else if (_lastSavedAt != null) {
+      text = 'Guardado ${_formatTimeShort(_lastSavedAt!)}';
+      icon = Icons.check_circle;
+    } else {
+      text = 'Aún sin guardar';
+      icon = Icons.info_outline;
+    }
+
+    final bg = cs.surfaceVariant.withOpacity(0.9);
+    final border = cs.outline.withOpacity(0.5);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: border, width: 0.7),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_saving)
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                  strokeWidth: 1.6),
+            )
+          else
+            Icon(icon, size: 14, color: cs.primary),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 11,
+              color:
+              Theme.of(context).textTheme.bodySmall?.color,
             ),
           ),
         ],
@@ -1239,15 +1740,18 @@ class _EditorScreenState extends State<EditorScreen> {
 
   Widget _thumb(_AttItem a, int index) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+          horizontal: 6, vertical: 8),
       child: InkWell(
         onTap: () => _showImageDialog(a.bytes, a.name),
         child: Container(
           width: 72,
           height: 72,
           decoration: BoxDecoration(
-            border: Border.all(color: Theme.of(context).dividerColor),
-            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+                color: Theme.of(context).dividerColor),
+            borderRadius:
+            BorderRadius.circular(8),
             color: Theme.of(context).cardColor,
           ),
           clipBehavior: Clip.antiAlias,
@@ -1264,7 +1768,8 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  Future<void> _showImageDialog(Uint8List bytes, String name) {
+  Future<void> _showImageDialog(
+      Uint8List bytes, String name) {
     return showDialog<void>(
       context: context,
       builder: (_) => Dialog(
@@ -1272,18 +1777,27 @@ class _EditorScreenState extends State<EditorScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 10),
               alignment: Alignment.centerLeft,
-              child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+              child: Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             SizedBox(
               width: 420,
               height: 320,
-              child: InteractiveViewer(child: Image.memory(bytes, fit: BoxFit.contain)),
+              child: InteractiveViewer(
+                child: Image.memory(bytes,
+                    fit: BoxFit.contain),
+              ),
             ),
             const SizedBox(height: 8),
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () =>
+                  Navigator.of(context).pop(),
               child: const Text('Cerrar'),
             ),
             const SizedBox(height: 8),
@@ -1297,16 +1811,24 @@ class _EditorScreenState extends State<EditorScreen> {
     setState(() => _attLoading = true);
     try {
       final r = _focus.$1;
-      final xs = await AttachmentsServiceWeb.I.listFor(sheetId: widget.sheetId, row: r);
+      final xs = await AttachmentsServiceWeb.I
+          .listFor(sheetId: widget.sheetId, row: r);
       if (!mounted) return;
       final list = <_AttItem>[];
       for (final a in xs) {
         try {
-          final mime = ((a as dynamic).mime as String?)?.toLowerCase() ?? 'application/octet-stream';
+          final mime = ((a as dynamic).mime
+          as String?)
+              ?.toLowerCase() ??
+              'application/octet-stream';
           if (!mime.startsWith('image/')) continue;
-          final bytes = (a as dynamic).bytes as Uint8List;
-          final name = (a as dynamic).name as String? ?? 'imagen';
-          list.add(_AttItem(name: name, mime: mime, bytes: bytes));
+          final bytes =
+          (a as dynamic).bytes as Uint8List;
+          final name =
+              (a as dynamic).name as String? ??
+                  'imagen';
+          list.add(_AttItem(
+              name: name, mime: mime, bytes: bytes));
         } catch (_) {}
       }
       setState(() => _attOfFocused = list);
@@ -1320,7 +1842,8 @@ class _EditorScreenState extends State<EditorScreen> {
 
   // ---------- body ----------
   Widget _buildBody(ColorScheme cs) {
-    final bgOdd = Theme.of(context).brightness == Brightness.light
+    final bgOdd =
+    Theme.of(context).brightness == Brightness.light
         ? const Color(0xFFFDFDFE)
         : const Color(0xFF0F1522);
     return Row(
@@ -1329,12 +1852,14 @@ class _EditorScreenState extends State<EditorScreen> {
           width: _indexColW,
           child: ListView.builder(
             controller: _vIdx,
-            physics: const AlwaysScrollableScrollPhysics(),
+            keyboardDismissBehavior:
+            ScrollViewKeyboardDismissBehavior.onDrag,
             itemExtent: _rowH,
             itemCount: _rowCount,
             itemBuilder: (context, r) {
               final selected = r == _focus.$1;
-              final rowBg = r.isOdd ? bgOdd : Colors.transparent;
+              final rowBg =
+              r.isOdd ? bgOdd : Colors.transparent;
               final cnt = _attachCounts[r] ?? 0;
               return InkWell(
                 onTap: () {
@@ -1350,20 +1875,33 @@ class _EditorScreenState extends State<EditorScreen> {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           border: Border(
-                            bottom: BorderSide(color: Theme.of(context).dividerColor),
-                            right: BorderSide(color: Theme.of(context).dividerColor),
+                            bottom: BorderSide(
+                              color: Theme.of(context)
+                                  .dividerColor,
+                            ),
+                            right: BorderSide(
+                              color: Theme.of(context)
+                                  .dividerColor,
+                            ),
                           ),
                         ),
                         child: Text(
                           '${r + 1}',
-                          style: TextStyle(fontWeight: selected ? FontWeight.w700 : FontWeight.w500),
+                          style: TextStyle(
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
                         ),
                       ),
                       if (selected)
                         IgnorePointer(
                           child: Container(
                             decoration: BoxDecoration(
-                              border: Border.all(color: cs.primary, width: 2),
+                              border: Border.all(
+                                color: cs.primary,
+                                width: 2,
+                              ),
                             ),
                           ),
                         ),
@@ -1372,16 +1910,34 @@ class _EditorScreenState extends State<EditorScreen> {
                           right: 6,
                           bottom: 6,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: cs.primary, borderRadius: BorderRadius.circular(10)),
+                            padding:
+                            const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: cs.primary,
+                              borderRadius:
+                              BorderRadius.circular(10),
+                            ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.attach_file, size: 12, color: Colors.white),
+                                const Icon(
+                                  Icons.attach_file,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
                                 const SizedBox(width: 2),
-                                Text('$cnt',
-                                    style: const TextStyle(
-                                        color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                                Text(
+                                  '$cnt',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight:
+                                    FontWeight.w700,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -1396,13 +1952,17 @@ class _EditorScreenState extends State<EditorScreen> {
         Expanded(
           child: LayoutBuilder(
             builder: (_, cons) {
-              final vw = cons.maxWidth > 0 ? cons.maxWidth : MediaQuery.of(context).size.width;
+              final vw = cons.maxWidth > 0
+                  ? cons.maxWidth
+                  : MediaQuery.of(context).size.width;
               _scheduleViewportOps(vw);
               return SingleChildScrollView(
                 controller: _hBody,
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
-                  width: _prefix.isEmpty ? vw : math.max(_prefix.last, vw),
+                  width: _prefix.isEmpty
+                      ? vw
+                      : math.max(_prefix.last, vw),
                   child: Focus(
                     autofocus: true,
                     skipTraversal: true,
@@ -1411,17 +1971,29 @@ class _EditorScreenState extends State<EditorScreen> {
                     onKeyEvent: _handleGridKey,
                     child: ListView.builder(
                       controller: _vBody,
+                      keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior
+                          .onDrag,
                       itemExtent: _rowH,
                       itemCount: _rowCount,
                       itemBuilder: (context, r) {
-                        final rowBg = r.isOdd ? bgOdd : Colors.transparent;
+                        final rowBg =
+                        r.isOdd ? bgOdd : Colors.transparent;
                         return Container(
                           color: rowBg,
                           child: Row(
                             children: [
-                              SizedBox(width: _sumRange(0, _firstCol)),
-                              for (int c = _firstCol; c <= _lastCol; c++) _cell(r, c, cs),
-                              SizedBox(width: _sumRange(_lastCol + 1, _colCount)),
+                              SizedBox(
+                                  width: _sumRange(
+                                      0, _firstCol)),
+                              for (int c = _firstCol;
+                              c <= _lastCol;
+                              c++)
+                                _cell(r, c, cs),
+                              SizedBox(
+                                  width: _sumRange(
+                                      _lastCol + 1,
+                                      _colCount)),
                             ],
                           ),
                         );
@@ -1439,12 +2011,14 @@ class _EditorScreenState extends State<EditorScreen> {
 
   Widget _cell(int r, int c, ColorScheme cs) {
     final w = _colW[c];
-    final focused = _focus.$1 == r && _focus.$2 == c;
+    final focused =
+        _focus.$1 == r && _focus.$2 == c;
     final text = _state.rows[r][c];
 
     final content = (_isEditing && focused)
         ? Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding:
+      const EdgeInsets.symmetric(horizontal: 8),
       child: TextField(
         key: ValueKey('cell_editor_${r}_$c'),
         focusNode: _cellFN,
@@ -1455,23 +2029,32 @@ class _EditorScreenState extends State<EditorScreen> {
         keyboardType: TextInputType.text,
         autocorrect: false,
         enableSuggestions: false,
-        smartDashesType: SmartDashesType.disabled,
-        smartQuotesType: SmartQuotesType.disabled,
+        smartDashesType:
+        SmartDashesType.disabled,
+        smartQuotesType:
+        SmartQuotesType.disabled,
         decoration: const InputDecoration(
           isDense: true,
           border: InputBorder.none,
           contentPadding: EdgeInsets.zero,
         ),
-        onTapOutside: (_) => _commitCell(r, c, _cellEC.text),
-        onSubmitted: (_) => _commitAndMoveDown(r, c),
+        onTapOutside: (_) =>
+            _commitCell(r, c, _cellEC.text),
+        onSubmitted: (_) =>
+            _commitAndMoveDown(r, c),
         onEditingComplete: () {},
       ),
     )
         : Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(
+          horizontal: 10),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
 
@@ -1484,7 +2067,8 @@ class _EditorScreenState extends State<EditorScreen> {
         onDoubleTap: () => _startEditing(r, c),
         onLongPressStart: (d) async {
           _setFocus(r, c);
-          final pick = await _showCellMenu(d.globalPosition);
+          final pick =
+          await _showCellMenu(d.globalPosition);
           if (pick == null) return;
           switch (pick) {
             case _CellMenu.gpsRight:
@@ -1500,15 +2084,29 @@ class _EditorScreenState extends State<EditorScreen> {
               await _dictateAt(r, c);
               break;
             case _CellMenu.clear:
-              _updateState(_state.withCell(r, c, ''));
+              _updateState(
+                  _state.withCell(r, c, ''));
+              break;
+            case _CellMenu.duplicateRow:
+              _duplicateRow(r);
+              break;
+            case _CellMenu.openMap:
+              await _openLocationForCell(r, c);
+              break;
+            case _CellMenu.copyLocation:
+              _copyLocationForCell(r, c);
               break;
           }
         },
         child: Container(
           decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: Theme.of(context).dividerColor),
-              right: BorderSide(color: Theme.of(context).dividerColor),
+              bottom: BorderSide(
+                  color:
+                  Theme.of(context).dividerColor),
+              right: BorderSide(
+                  color:
+                  Theme.of(context).dividerColor),
             ),
           ),
           child: Stack(
@@ -1518,7 +2116,10 @@ class _EditorScreenState extends State<EditorScreen> {
               if (focused && !_isEditing)
                 IgnorePointer(
                   child: Container(
-                    decoration: BoxDecoration(border: Border.all(color: cs.primary, width: 2)),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                          color: cs.primary, width: 2),
+                    ),
                   ),
                 ),
             ],
@@ -1529,41 +2130,100 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Future<_CellMenu?> _showCellMenu(Offset globalPos) {
-    final pos = RelativeRect.fromLTRB(globalPos.dx, globalPos.dy, globalPos.dx, globalPos.dy);
+    final pos = RelativeRect.fromLTRB(
+      globalPos.dx,
+      globalPos.dy,
+      globalPos.dx,
+      globalPos.dy,
+    );
+
+    final txt = _state.rows[_focus.$1][_focus.$2];
+    final hasLocation = _mapsLinkOrNull(txt) != null;
+
+    final items = <PopupMenuEntry<_CellMenu>>[
+      const PopupMenuItem(
+        value: _CellMenu.gpsRight,
+        child: ListTile(
+          leading: Icon(Icons.my_location),
+          title: Text('Ubicación a la derecha'),
+        ),
+      ),
+      const PopupMenuItem(
+        value: _CellMenu.speakRight,
+        child: ListTile(
+          leading: Icon(Icons.mic),
+          title: Text('Dictar a la derecha'),
+        ),
+      ),
+      const PopupMenuDivider(),
+      const PopupMenuItem(
+        value: _CellMenu.gpsHere,
+        child: ListTile(
+          leading: Icon(Icons.place),
+          title: Text('Ubicación aquí'),
+        ),
+      ),
+      const PopupMenuItem(
+        value: _CellMenu.speakHere,
+        child: ListTile(
+          leading: Icon(Icons.keyboard_voice_outlined),
+          title: Text('Dictar aquí'),
+        ),
+      ),
+      const PopupMenuDivider(),
+      const PopupMenuItem(
+        value: _CellMenu.clear,
+        child: ListTile(
+          leading: Icon(Icons.clear),
+          title: Text('Borrar celda'),
+        ),
+      ),
+      const PopupMenuItem(
+        value: _CellMenu.duplicateRow,
+        child: ListTile(
+          leading: Icon(Icons.content_copy),
+          title: Text('Duplicar fila'),
+        ),
+      ),
+    ];
+
+    if (hasLocation) {
+      items.add(const PopupMenuDivider());
+      items.add(
+        const PopupMenuItem(
+          value: _CellMenu.openMap,
+          child: ListTile(
+            leading: Icon(Icons.map),
+            title: Text('Abrir en Maps'),
+          ),
+        ),
+      );
+      items.add(
+        const PopupMenuItem(
+          value: _CellMenu.copyLocation,
+          child: ListTile(
+            leading: Icon(Icons.my_location_outlined),
+            title: Text('Copiar ubicación'),
+          ),
+        ),
+      );
+    }
+
     return showMenu<_CellMenu>(
       context: context,
       position: pos,
-      items: const [
-        PopupMenuItem(
-          value: _CellMenu.gpsRight,
-          child: ListTile(leading: Icon(Icons.my_location), title: Text('Ubicación a la derecha')),
-        ),
-        PopupMenuItem(
-          value: _CellMenu.speakRight,
-          child: ListTile(leading: Icon(Icons.mic), title: Text('Dictar a la derecha')),
-        ),
-        PopupMenuDivider(),
-        PopupMenuItem(
-          value: _CellMenu.gpsHere,
-          child: ListTile(leading: Icon(Icons.place), title: Text('Ubicación aquí')),
-        ),
-        PopupMenuItem(
-          value: _CellMenu.speakHere,
-          child: ListTile(leading: Icon(Icons.keyboard_voice_outlined), title: Text('Dictar aquí')),
-        ),
-        PopupMenuDivider(),
-        PopupMenuItem(
-          value: _CellMenu.clear,
-          child: ListTile(leading: Icon(Icons.clear), title: Text('Borrar celda')),
-        ),
-      ],
+      items: items,
     );
   }
 
   // ---------- key handling ----------
   KeyEventResult _handleGridKey(FocusNode _, KeyEvent e) {
-    if (e is! KeyDownEvent) return KeyEventResult.ignored;
-    if (_isEditing) return KeyEventResult.ignored;
+    if (e is! KeyDownEvent) {
+      return KeyEventResult.ignored;
+    }
+    if (_isEditing) {
+      return KeyEventResult.ignored;
+    }
     final (r, c) = _focus;
 
     // Navegación básica
@@ -1588,21 +2248,29 @@ class _EditorScreenState extends State<EditorScreen> {
       return KeyEventResult.handled;
     }
     if (e.logicalKey == LogicalKeyboardKey.enter ||
-        e.logicalKey == LogicalKeyboardKey.numpadEnter ||
+        e.logicalKey ==
+            LogicalKeyboardKey.numpadEnter ||
         e.logicalKey == LogicalKeyboardKey.f2 ||
-        e.logicalKey == LogicalKeyboardKey.space ||
-        e.logicalKey == LogicalKeyboardKey.select) {
+        e.logicalKey ==
+            LogicalKeyboardKey.space ||
+        e.logicalKey ==
+            LogicalKeyboardKey.select) {
       _startEditing(r, c);
       return KeyEventResult.handled;
     }
 
-    final keys = HardwareKeyboard.instance.logicalKeysPressed;
-    final hasCtrl = keys.contains(LogicalKeyboardKey.controlLeft) ||
-        keys.contains(LogicalKeyboardKey.controlRight) ||
-        keys.contains(LogicalKeyboardKey.metaLeft) ||
-        keys.contains(LogicalKeyboardKey.metaRight);
-    final hasShift = keys.contains(LogicalKeyboardKey.shiftLeft) ||
-        keys.contains(LogicalKeyboardKey.shiftRight);
+    final keys =
+        HardwareKeyboard.instance.logicalKeysPressed;
+    final hasCtrl =
+        keys.contains(LogicalKeyboardKey.controlLeft) ||
+            keys.contains(
+                LogicalKeyboardKey.controlRight) ||
+            keys.contains(LogicalKeyboardKey.metaLeft) ||
+            keys.contains(LogicalKeyboardKey.metaRight);
+    final hasShift =
+        keys.contains(LogicalKeyboardKey.shiftLeft) ||
+            keys.contains(
+                LogicalKeyboardKey.shiftRight);
 
     // Tab / Shift+Tab
     if (e.logicalKey == LogicalKeyboardKey.tab) {
@@ -1616,9 +2284,31 @@ class _EditorScreenState extends State<EditorScreen> {
       return KeyEventResult.handled;
     }
 
+    // Copiar / pegar celda (general)
+    if (hasCtrl &&
+        e.logicalKey == LogicalKeyboardKey.keyC) {
+      final text = _state.rows[r][c];
+      Clipboard.setData(ClipboardData(text: text));
+      return KeyEventResult.handled;
+    }
+
+    if (hasCtrl &&
+        e.logicalKey == LogicalKeyboardKey.keyV) {
+      Clipboard.getData('text/plain').then((data) {
+        if (!mounted) return;
+        final t = data?.text;
+        if (t == null) return;
+        _updateState(_state.withCell(r, c, t));
+      });
+      return KeyEventResult.handled;
+    }
+
     // Inicio de edición con caracter
     final String? ch = e.character;
-    if (!hasCtrl && ch != null && ch.isNotEmpty && ch.runes.length == 1) {
+    if (!hasCtrl &&
+        ch != null &&
+        ch.isNotEmpty &&
+        ch.runes.length == 1) {
       _beginCharEdit(ch);
       return KeyEventResult.handled;
     }
@@ -1647,7 +2337,7 @@ class _EditorScreenState extends State<EditorScreen> {
       return KeyEventResult.handled;
     }
     if (hasCtrl && e.logicalKey == LogicalKeyboardKey.keyN) {
-      _addRow();
+      _addRowAndFocus();
       return KeyEventResult.handled;
     }
     if (hasCtrl && e.logicalKey == LogicalKeyboardKey.keyE) {
@@ -1665,16 +2355,32 @@ class _EditorScreenState extends State<EditorScreen> {
   // ---------- attachments picker ----------
   Future<void> _pickAttachmentsForFocusedRow() async {
     if (_rowCount == 0) {
-      final messenger = ScaffoldMessenger.maybeOf(context);
-      messenger?.showSnackBar(const SnackBar(content: Text('No hay filas')));
+      final messenger =
+      ScaffoldMessenger.maybeOf(context);
+      messenger?.showSnackBar(
+        const SnackBar(content: Text('No hay filas')),
+      );
       return;
     }
-    final messenger = ScaffoldMessenger.maybeOf(context);
+    final messenger =
+    ScaffoldMessenger.maybeOf(context);
     final r = _focus.$1;
     try {
-      final groupExt = XTypeGroup(label: 'Imágenes', extensions: const ['png', 'jpg', 'jpeg', 'webp', 'heic']);
-      final groupMime = XTypeGroup(label: 'Imágenes', mimeTypes: const ['image/*']);
-      final files = await openFiles(acceptedTypeGroups: [groupExt, groupMime]);
+      final groupExt = XTypeGroup(
+        label: 'Imágenes',
+        extensions: const [
+          'png',
+          'jpg',
+          'jpeg',
+          'webp',
+          'heic'
+        ],
+      );
+      final groupMime = XTypeGroup(
+          label: 'Imágenes',
+          mimeTypes: const ['image/*']);
+      final files = await openFiles(
+          acceptedTypeGroups: [groupExt, groupMime]);
       if (files.isEmpty) return;
 
       for (final f in files) {
@@ -1685,14 +2391,27 @@ class _EditorScreenState extends State<EditorScreen> {
       if (!mounted) return;
       await _refreshAttachRow(r);
       await _loadFocusedRowAttachments();
-      messenger?.showSnackBar(SnackBar(content: Text('Adjuntos agregados: \${files.length}')));
+      messenger?.showSnackBar(
+        SnackBar(
+          content: Text(
+              'Adjuntos agregados: ${files.length}'),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
-      messenger?.showSnackBar(SnackBar(content: Text('No se pudo abrir el selector: $e')));
+      messenger?.showSnackBar(
+        SnackBar(
+          content: Text(
+              'No se pudo abrir el selector: $e'),
+        ),
+      );
     }
   }
 
-  Future<void> _attachmentsAddBytes({required int r, required XFile file}) async {
+  Future<void> _attachmentsAddBytes({
+    required int r,
+    required XFile file,
+  }) async {
     final bytes = await file.readAsBytes();
     final name = file.name;
     final mime = _guessMime(name);
@@ -1721,7 +2440,9 @@ class _EditorScreenState extends State<EditorScreen> {
   String _guessMime(String name) {
     final n = name.toLowerCase();
     if (n.endsWith('.png')) return 'image/png';
-    if (n.endsWith('.jpg') || n.endsWith('.jpeg')) return 'image/jpeg';
+    if (n.endsWith('.jpg') || n.endsWith('.jpeg')) {
+      return 'image/jpeg';
+    }
     if (n.endsWith('.webp')) return 'image/webp';
     if (n.endsWith('.heic')) return 'image/heic';
     return 'application/octet-stream';
@@ -1732,23 +2453,44 @@ class _EditorScreenState extends State<EditorScreen> {
     final ts = await LocalStore.importBackup();
     if (!mounted || ts == null) return;
     final rows = ts.rows.isEmpty
-        ? List.generate(3, (_) => List<String>.filled(ts.headers.length, ''))
+        ? List.generate(
+      3,
+          (_) => List<String>.filled(
+          ts.headers.length, ''),
+    )
         : ts.rows.map((r) => r.toList()).toList();
-    _updateState(TableState(headers: ts.headers.toList(), rows: rows, savedAt: DateTime.now()));
+    _updateState(
+      TableState(
+        headers: ts.headers.toList(),
+        rows: rows,
+        savedAt: DateTime.now(),
+      ),
+    );
     _resetHdrCtl();
     _rebuildPrefix();
     _autoFitOnce = false;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _recomputeVisibleCols());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _recomputeVisibleCols());
     _attachDebounce(_refreshAttachForVisible);
     await _loadFocusedRowAttachments();
   }
 }
 
 // ----- Menú contextual -----
-enum _CellMenu { gpsRight, speakRight, gpsHere, speakHere, clear }
+enum _CellMenu {
+  gpsRight,
+  speakRight,
+  gpsHere,
+  speakHere,
+  clear,
+  duplicateRow,
+  openMap,
+  copyLocation,
+}
 
 class _Skeleton extends StatelessWidget {
   const _Skeleton();
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -1758,7 +2500,12 @@ class _Skeleton extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.4)),
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2.4),
+            ),
             SizedBox(width: 10),
             Text('Abriendo planilla…'),
           ],
@@ -1774,27 +2521,39 @@ class _AttItem {
   final String name;
   final String mime;
   final Uint8List bytes;
-  const _AttItem({required this.name, required this.mime, required this.bytes});
+  const _AttItem({
+    required this.name,
+    required this.mime,
+    required this.bytes,
+  });
 }
 
 // ----- ScrollBehavior específico por plataforma -----
 class _PlatformScrollBehavior extends ScrollBehavior {
   const _PlatformScrollBehavior();
+
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) {
     final platform = Theme.of(context).platform;
     switch (platform) {
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
-        return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+        return const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        );
       default:
-        return const ClampingScrollPhysics();
+        return const ClampingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        );
     }
   }
 
   @override
-  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
-    // Sin glow para look moderno
+  Widget buildOverscrollIndicator(
+      BuildContext context,
+      Widget child,
+      ScrollableDetails details,
+      ) {
     return child;
   }
 }

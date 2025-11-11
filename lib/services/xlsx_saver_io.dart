@@ -32,6 +32,6 @@ Future<Directory> _resolveBaseDir() async {
 }
 
 String _sanitize(String s) {
-  final t = s.trim().replaceAll(RegExp(r'\.xlsx$', caseSensitive: false), '');
+  final t = s.trim().replaceAll(RegExp(r'\.xlsx\$', caseSensitive: false), '');
   return t.isEmpty ? 'bitflow_export' : t;
 }
