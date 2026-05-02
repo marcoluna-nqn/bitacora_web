@@ -637,7 +637,7 @@ class _ActionGrid extends StatelessWidget {
         valueKey: const ValueKey('start-primary-automate'),
         icon: Icons.auto_awesome_rounded,
         title: 'Plantilla técnica',
-        subtitle: 'Operadora Norte · evidencias',
+        subtitle: 'Patagonia Ingeniería · demo LinkedIn',
         onTap: onTemplate,
       ),
     ];
@@ -1084,9 +1084,9 @@ class _DemoPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final rows = const [
-      ['Operadora Norte', 'Manifold 3', 'Inspección visual', 'OK'],
-      ['Operadora Norte', 'Línea 6"', 'Vibración en soporte', 'Revisar'],
-      ['Operadora Norte', 'Caseta RTU', 'Foto y GPS cargados', 'Completo'],
+      ['120', 'Acceso norte', 'Cartel principal', 'OK'],
+      ['310', 'Sector bombas', 'Baliza seguridad', 'Crítico'],
+      ['1780', 'Línea peatonal', 'Flecha direccional', 'Atención'],
     ];
 
     return AppCard(
@@ -1120,7 +1120,7 @@ class _DemoPanel extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Relevamiento técnico con evidencias',
+                        'Patagonia Ingeniería - demo técnica',
                         style: t.text.titleSmall?.copyWith(
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.1,
@@ -1143,7 +1143,7 @@ class _DemoPanel extends StatelessWidget {
           Divider(height: 1, color: t.colors.border),
           Semantics(
             label:
-                'Vista previa de relevamiento técnico con cliente, activo, hallazgo y estado.',
+                'Vista previa de relevamiento técnico con progresiva, sector, elemento y estado.',
             child: ExcludeSemantics(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -1153,9 +1153,9 @@ class _DemoPanel extends StatelessWidget {
                   ),
                   dividerThickness: 0,
                   columns: const [
-                    DataColumn(label: Text('Cliente')),
-                    DataColumn(label: Text('Activo')),
-                    DataColumn(label: Text('Hallazgo')),
+                    DataColumn(label: Text('Progresiva')),
+                    DataColumn(label: Text('Sector')),
+                    DataColumn(label: Text('Elemento')),
                     DataColumn(label: Text('Estado')),
                   ],
                   rows: [

@@ -4481,7 +4481,7 @@ class _EditorScreenState extends State<EditorScreen>
 
       for (int r = 0; r < _rows.length; r++) {
         for (int c = 0; c < _headers.length - 1; c++) {
-          final v = _rows[r].cells[c];
+          final v = _effectiveCell(r, c);
           final ref = _CellRef(r, c);
           final message = _validationMessageForCell(r, c, overrideValue: v);
           if (message != null) {
@@ -18041,9 +18041,20 @@ class _EditorScreenState extends State<EditorScreen>
   String debugDisplayedCellText(int r, int c) => _displayCellValue(r, c);
 
   @visibleForTesting
+  String debugHeaderText(int c) => _headerLabel(c);
+
+  @visibleForTesting
   void debugSetCellDraft(int r, int c, String value) {
     assert(() {
       _setDraftCell(r, c, value);
+      return true;
+    }());
+  }
+
+  @visibleForTesting
+  void debugSetHeaderDraft(int c, String value) {
+    assert(() {
+      _setDraftHeader(c, value);
       return true;
     }());
   }
@@ -18440,6 +18451,18 @@ class _EditorScreenState extends State<EditorScreen>
   @visibleForTesting
   Future<bool> debugConfirmExportValidationGateForTest() {
     return _confirmExportWithValidationIfNeeded();
+  }
+
+  @visibleForTesting
+  Future<Uint8List?> debugBuildXlsxBytesForTest() async {
+    assert(() {
+      return true;
+    }());
+    _syncActiveDrafts();
+    return _buildXlsxBytesForExport(
+      embeddedPhotos: const <EmbeddedPhoto>[],
+      attachments: const <AttachmentRow>[],
+    );
   }
 
   @visibleForTesting
@@ -18969,6 +18992,8 @@ class _EditorScreenState extends State<EditorScreen>
     bool includeAttachments = true,
     bool share = false,
   }) async {
+    _syncActiveDrafts();
+    _scheduleValidationRecompute(immediate: true);
     final canContinue = await _confirmExportWithValidationIfNeeded();
     if (!canContinue) return;
     if (!_tryBeginLongOperation(
@@ -19070,6 +19095,8 @@ class _EditorScreenState extends State<EditorScreen>
     bool includeAttachments = true,
     bool share = false,
   }) async {
+    _syncActiveDrafts();
+    _scheduleValidationRecompute(immediate: true);
     final canContinue = await _confirmExportWithValidationIfNeeded();
     if (!canContinue) return;
     if (!_tryBeginLongOperation(
@@ -19159,6 +19186,8 @@ class _EditorScreenState extends State<EditorScreen>
   }
 
   Future<void> _exportZipBundle({required bool share}) async {
+    _syncActiveDrafts();
+    _scheduleValidationRecompute(immediate: true);
     final canContinue = await _confirmExportWithValidationIfNeeded();
     if (!canContinue) return;
     if (!_tryBeginLongOperation(
@@ -19279,6 +19308,7 @@ class _EditorScreenState extends State<EditorScreen>
   }
 
   Future<void> _exportBackupZip() async {
+    _syncActiveDrafts();
     if (!_tryBeginLongOperation(
       message: AppStrings.progressPreparingExport,
       cancellable: true,
@@ -19380,6 +19410,7 @@ class _EditorScreenState extends State<EditorScreen>
   }
 
   Future<void> _exportHtmlReport() async {
+    _syncActiveDrafts();
     if (!_tryBeginLongOperation(
       message: AppStrings.progressPreparingExport,
       cancellable: true,
@@ -19709,7 +19740,7 @@ class _EditorScreenState extends State<EditorScreen>
         html.write('<tr>');
         for (int c = 0; c < dataCols; c++) {
           _throwIfOperationCancelledBy(shouldCancel);
-          final text = (c < _rows[r].cells.length) ? _rows[r].cells[c] : '';
+          final text = _effectiveCell(r, c);
           html.write('<td>');
           html.write('<div>${esc.convert(text)}</div>');
           final meta = _cellMetaAt(r, c);
@@ -19769,11 +19800,11 @@ class _EditorScreenState extends State<EditorScreen>
     final dataCols = math.max(0, _headers.length - 1); // sin Photos
     final columns = List<String>.generate(dataCols, (i) => _headerLabel(i));
     final rows = <List<String>>[];
-    for (final row in _rows) {
+    for (int r = 0; r < _rows.length; r++) {
       _throwIfOperationCancelledBy(shouldCancel);
       final values = List<String>.filled(dataCols, '');
-      for (int c = 0; c < dataCols && c < row.cells.length; c++) {
-        values[c] = row.cells[c];
+      for (int c = 0; c < dataCols; c++) {
+        values[c] = _effectiveCell(r, c);
       }
       rows.add(values);
     }
@@ -19811,11 +19842,12 @@ class _EditorScreenState extends State<EditorScreen>
     }
     final rows = <List<String>>[];
     var reviewedCount = 0;
-    for (final row in _rows) {
+    for (int r = 0; r < _rows.length; r++) {
       _throwIfOperationCancelledBy(shouldCancel);
+      final row = _rows[r];
       final values = <String>[];
-      for (int c = 0; c < dataCols && c < row.cells.length; c++) {
-        values.add(row.cells[c]);
+      for (int c = 0; c < dataCols; c++) {
+        values.add(_effectiveCell(r, c));
       }
       if (includeReviewColumns) {
         final reviewed = row.reviewed;
@@ -20528,10 +20560,9 @@ class _EditorScreenState extends State<EditorScreen>
 
   int _countNonEmptyCells() {
     var total = 0;
-    for (final row in _rows) {
-      final maxCol = math.min(row.cells.length, _headers.length);
-      for (int col = 0; col < maxCol; col++) {
-        if (row.cells[col].trim().isNotEmpty) {
+    for (int r = 0; r < _rows.length; r++) {
+      for (int col = 0; col < _headers.length; col++) {
+        if (_effectiveCell(r, col).trim().isNotEmpty) {
           total++;
         }
       }

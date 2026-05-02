@@ -46,4 +46,45 @@ void main() {
     final reloaded = tester.state(find.byType(EditorScreen)) as dynamic;
     expect(reloaded.debugCellText(0, 0), 'draft sin commit');
   });
+
+  testWidgets('save persists header draft without explicit commit',
+      (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    tester.view.physicalSize = const Size(1440, 2200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const sheetId = 'header-draft-save-guardrail';
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: EditorScreen(
+          sheetId: sheetId,
+          initialHeaders: ['Col 1', 'Fotos'],
+          initialRows: [
+            ['valor inicial', ''],
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final state = tester.state(find.byType(EditorScreen)) as dynamic;
+    state.debugSetHeaderDraft(0, 'Encabezado demo editado');
+
+    await state.debugSaveNow();
+    await tester.pumpAndSettle();
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+
+    await tester.pumpWidget(
+      const MaterialApp(home: EditorScreen(sheetId: sheetId)),
+    );
+    await tester.pumpAndSettle();
+
+    final reloaded = tester.state(find.byType(EditorScreen)) as dynamic;
+    expect(reloaded.debugHeaderText(0), 'Encabezado demo editado');
+  });
 }
