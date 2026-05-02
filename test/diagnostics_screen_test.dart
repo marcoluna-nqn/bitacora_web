@@ -41,6 +41,44 @@ void main() {
     expect(find.text(AppStrings.diagnosticsExportReport), findsOneWidget);
   });
 
+  testWidgets('keeps diagnostics cards readable in dark theme', (tester) async {
+    final reporter = AppErrorReporter(
+      storage: MemoryAppErrorReporterStorage(),
+      capacity: 50,
+    );
+    await reporter.init();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: DiagnosticsScreen(
+          reporter: reporter,
+          loadAppInfo: _testAppInfo,
+          copyReportText: (_) async {},
+          saveReportBytes: (_, __) async => 'ok',
+          shareReportBytes: (_, __, ___) async {},
+          now: () => fixedNow,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final sectionTitle =
+        tester.widget<Text>(find.text(AppStrings.diagnosticsSummary));
+    expect(sectionTitle.style?.color, const Color(0xFFF5F7FA));
+
+    final emptyStateCard = tester.widget<Container>(
+      find
+          .ancestor(
+            of: find.text(AppStrings.diagnosticsNoRecentErrors),
+            matching: find.byType(Container),
+          )
+          .first,
+    );
+    final decoration = emptyStateCard.decoration as BoxDecoration;
+    expect(decoration.color, const Color(0xFF171A21));
+  });
+
   testWidgets(
       'tapping Exportar informe (JSON) generates payload via debug hook',
       (tester) async {

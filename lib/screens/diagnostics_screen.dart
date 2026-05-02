@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show Theme;
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
@@ -126,9 +127,18 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   @override
   Widget build(BuildContext context) {
     final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final pageBackground = _pageBackgroundColor(context);
     return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(
-        middle: Text(DiagnosticsScreen.routeTitle),
+      backgroundColor: pageBackground,
+      navigationBar: CupertinoNavigationBar(
+        backgroundColor: pageBackground,
+        border: Border(
+          bottom: BorderSide(color: _borderColor(context)),
+        ),
+        middle: Text(
+          DiagnosticsScreen.routeTitle,
+          style: TextStyle(color: _primaryTextColor(context)),
+        ),
       ),
       child: SafeArea(
         child: ValueListenableBuilder<int>(
@@ -279,12 +289,15 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                 margin: const EdgeInsets.only(top: 2),
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: CupertinoColors.systemGrey6,
+                  color: _detailBackgroundColor(context),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   detail,
-                  style: const TextStyle(fontSize: 12),
+                  style: TextStyle(
+                    color: _primaryTextColor(context),
+                    fontSize: 12,
+                  ),
                 ),
               ),
           ],
@@ -611,8 +624,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       padding: const EdgeInsets.only(left: 4, bottom: 6),
       child: Text(
         text,
-        style: const TextStyle(
-          color: CupertinoColors.label,
+        style: TextStyle(
+          color: _primaryTextColor(context),
           decoration: TextDecoration.none,
           fontSize: 15,
           fontWeight: FontWeight.w700,
@@ -624,14 +637,14 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   Widget _card({required List<Widget> children}) {
     return Container(
       decoration: BoxDecoration(
-        color: CupertinoColors.systemGrey6,
+        color: _cardBackgroundColor(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: CupertinoColors.systemGrey4),
+        border: Border.all(color: _borderColor(context)),
       ),
       padding: const EdgeInsets.all(12),
       child: DefaultTextStyle(
         style: TextStyle(
-          color: CupertinoColors.label.resolveFrom(context),
+          color: _primaryTextColor(context),
           decoration: TextDecoration.none,
           fontSize: 14,
         ),
@@ -653,21 +666,64 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
             width: 136,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: CupertinoColors.systemGrey,
+                color: _secondaryTextColor(context),
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(fontSize: 12),
+              style: TextStyle(
+                color: _primaryTextColor(context),
+                fontSize: 12,
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  bool _isDark(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark;
+  }
+
+  Color _pageBackgroundColor(BuildContext context) {
+    return _isDark(context)
+        ? const Color(0xFF090B10)
+        : CupertinoColors.systemGroupedBackground.resolveFrom(context);
+  }
+
+  Color _cardBackgroundColor(BuildContext context) {
+    return _isDark(context)
+        ? const Color(0xFF171A21)
+        : CupertinoColors.systemGrey6.resolveFrom(context);
+  }
+
+  Color _detailBackgroundColor(BuildContext context) {
+    return _isDark(context)
+        ? const Color(0xFF10131A)
+        : CupertinoColors.systemGrey6.resolveFrom(context);
+  }
+
+  Color _borderColor(BuildContext context) {
+    return _isDark(context)
+        ? const Color(0xFF2A2F3A)
+        : CupertinoColors.systemGrey4.resolveFrom(context);
+  }
+
+  Color _primaryTextColor(BuildContext context) {
+    return _isDark(context)
+        ? const Color(0xFFF5F7FA)
+        : CupertinoColors.label.resolveFrom(context);
+  }
+
+  Color _secondaryTextColor(BuildContext context) {
+    return _isDark(context)
+        ? const Color(0xFFB5BDCA)
+        : CupertinoColors.secondaryLabel.resolveFrom(context);
   }
 }
 
