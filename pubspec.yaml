@@ -102,3 +102,16 @@ flutter:
     - assets/sfx/
     # - assets/video/gridnote_cells_loop.mp4
 
+  # Fuentes locales: evitan que Flutter Web (CanvasKit) baje Roboto desde
+  # fonts.gstatic.com. Necesario para redes corporativas que bloquean CDNs.
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/roboto/Roboto-Regular.ttf
+        - asset: assets/fonts/roboto/Roboto-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/roboto/Roboto-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/roboto/Roboto-Black.ttf
+          weight: 900
+

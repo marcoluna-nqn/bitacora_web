@@ -145,6 +145,12 @@ class GridnoteTheme {
       labelLarge: cupertinoText.labelLarge?.copyWith(
         fontWeight: FontWeight.w700,
       ),
+    ).apply(
+      // Typography.*Cupertino marca cada estilo con '.SF Pro Text'; lo
+      // forzamos a la Roboto local empaquetada (assets/fonts/roboto) para
+      // no depender de fonts.gstatic.com en Flutter Web.
+      fontFamily: 'Roboto',
+      fontFamilyFallback: const <String>[],
     );
 
     const pillShape = StadiumBorder();
@@ -202,16 +208,9 @@ class GridnoteTheme {
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       pageTransitionsTheme: pageTransitions,
 
-      // Tipos: si no tenés SF Pro embebida, cae al fallback sin romper.
-      fontFamily: 'SF Pro Text',
-      fontFamilyFallback: const [
-        'SF Pro Text',
-        'SF Pro Display',
-        'Segoe UI Variable',
-        'Segoe UI',
-        'Helvetica Neue',
-        'Noto Sans',
-      ],
+      // Tipografía: Roboto local empaquetada (assets/fonts/roboto). Sin
+      // fallback a fuentes de sistema para no disparar descargas de CDN.
+      fontFamily: 'Roboto',
       textTheme: textTheme,
 
       // Menos “tinta Material”.
