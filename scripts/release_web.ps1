@@ -113,7 +113,10 @@ try {
   $resolvedSupportEmail = Resolve-DefineValue -ExplicitValue $SupportEmail -EnvName "SUPPORT_EMAIL"
   $resolvedSupportWhatsApp = Resolve-DefineValue -ExplicitValue $SupportWhatsApp -EnvName "SUPPORT_WHATSAPP"
 
-  $buildArgs = @("build", "web", "--release", "--pwa-strategy=none", "--base-href", $resolvedBaseHref)
+  # --no-web-resources-cdn: empaqueta CanvasKit localmente en lugar de
+  # bajarlo de gstatic.com, para que la app funcione en redes corporativas
+  # que bloquean CDNs externos.
+  $buildArgs = @("build", "web", "--release", "--no-web-resources-cdn", "--pwa-strategy=none", "--base-href", $resolvedBaseHref)
   if ($resolvedProCtaUrl) {
     $buildArgs += "--dart-define=PRO_CTA_URL=$resolvedProCtaUrl"
   }
