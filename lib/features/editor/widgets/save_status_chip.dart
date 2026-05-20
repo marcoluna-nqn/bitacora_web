@@ -264,7 +264,7 @@ class _StatusChipShell extends StatelessWidget {
     return AnimatedContainer(
       duration: AppMotion.micro,
       curve: AppMotion.standardOut,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
@@ -284,23 +284,24 @@ class _StatusChipShell extends StatelessWidget {
         children: [
           if (busy)
             SizedBox(
-              width: 14,
-              height: 14,
+              width: 13,
+              height: 13,
               child: CircularProgressIndicator(
-                strokeWidth: 1.9,
+                strokeWidth: 1.8,
                 valueColor: AlwaysStoppedAnimation<Color>(fg),
               ),
             )
           else
-            Icon(icon, size: 14, color: fg),
-          const SizedBox(width: 6),
+            Icon(icon, size: 13, color: fg),
+          const SizedBox(width: 5),
           Text(
             label,
             style: TextStyle(
               color: fg,
               fontWeight: FontWeight.w800,
-              fontSize: 12,
+              fontSize: 11.5,
               height: 1.05,
+              letterSpacing: 0,
             ),
           ),
         ],
@@ -308,4 +309,3 @@ class _StatusChipShell extends StatelessWidget {
     );
   }
 }
-

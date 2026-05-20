@@ -9975,7 +9975,8 @@ class _EditorScreenState extends State<EditorScreen>
         final collapseNonCriticalTopChrome = autoCollapsedTopChrome;
         final showSelectionQuickActions = !_mobileEditorOpen &&
             !keyboardVisible &&
-            (_selRow >= 0 && _selCol >= 0);
+            (_selRow >= 0 && _selCol >= 0) &&
+            (!isDesktop || _selectedRows.length > 1);
         final canMarkSelectionStatus = _statusColumnForBatchActions() != null;
         final canMarkSelectionPriority =
             _priorityColumnForBatchActions() != null;

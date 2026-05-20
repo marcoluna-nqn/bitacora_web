@@ -111,11 +111,11 @@ class _PremiumAppleHeader extends StatelessWidget {
   final bool pendingReviewViewActive;
 
   String _formatLocalSaved(DateTime? value) {
-    if (value == null) return 'Último guardado local: --:--';
+    if (value == null) return 'Local --:--';
     final local = value.toLocal();
     final hh = local.hour.toString().padLeft(2, '0');
     final mm = local.minute.toString().padLeft(2, '0');
-    return 'Último guardado local: $hh:$mm';
+    return 'Local $hh:$mm';
   }
 
   static String _columnLabel(int col) {
@@ -130,495 +130,529 @@ class _PremiumAppleHeader extends StatelessWidget {
   }
 
   String _selectionLabel() {
-    if (selectedRow < 0 || selectedCol < 0) return 'Sin selección';
+    if (selectedRow < 0 || selectedCol < 0) return 'Sin selecci\u00f3n';
     return 'Celda ${_columnLabel(selectedCol)}${selectedRow + 1}';
   }
 
   @override
   Widget build(BuildContext context) {
     final pad = MediaQuery.paddingOf(context);
-    final top = math.max(10.0, pad.top);
+    final top = math.max(6.0, pad.top);
 
-    final sigma = palette.isLight ? 14.0 : 12.0;
+    final evidenceItems = <AppleToolbarItem>[
+      AppleToolbarItem(
+        icon: Icons.photo_camera_outlined,
+        label: 'C\u00e1mara',
+        shortcut: 'P',
+        onTap: onPhoto,
+        enabled: sensorsEnabled,
+        onDisabledTap: onPhoto,
+      ),
+      AppleToolbarItem(
+        icon: Icons.videocam_outlined,
+        label: 'Video',
+        onTap: onVideo,
+      ),
+      AppleToolbarItem(
+        icon: Icons.mic_none_rounded,
+        label: 'Audio',
+        shortcut: 'A',
+        onTap: onAudio,
+        enabled: sensorsEnabled,
+        onDisabledTap: onAudio,
+      ),
+      AppleToolbarItem(
+        icon: Icons.my_location_rounded,
+        label: 'GPS',
+        shortcut: 'G',
+        onTap: onGps,
+        enabled: sensorsEnabled,
+        onDisabledTap: onGps,
+      ),
+      AppleToolbarItem(
+        icon: Icons.tune_rounded,
+        label: 'Modo GPS',
+        onTap: onGpsMode,
+      ),
+      AppleToolbarItem(
+        icon: Icons.attach_file_rounded,
+        label: 'Adjuntos',
+        onTap: onAttachments,
+      ),
+      AppleToolbarItem(
+        icon: Icons.upload_file_outlined,
+        label: 'Archivo',
+        onTap: onFile,
+      ),
+    ];
 
-    final glassGradient = LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [
-        palette.gridBg.withValues(alpha: palette.isLight ? 0.94 : 0.78),
-        palette.headerBg.withValues(alpha: palette.isLight ? 0.84 : 0.64),
-      ],
-    );
+    final reviewItems = <AppleToolbarItem>[
+      AppleToolbarItem(
+        icon: Icons.verified_rounded,
+        label: 'Marcar revisado',
+        onTap: onMarkReviewed,
+      ),
+      AppleToolbarItem(
+        icon: pendingReviewViewActive
+            ? Icons.pending_actions_rounded
+            : Icons.fact_check_outlined,
+        label: pendingReviewViewActive ? 'Pendientes' : 'Ver pendientes',
+        onTap: onTogglePendingReviewView,
+      ),
+      AppleToolbarItem(
+        icon: Icons.history_rounded,
+        label: 'Historial',
+        onTap: onHistory,
+      ),
+      AppleToolbarItem(
+        icon: Icons.group_work_outlined,
+        label: 'Colaborar',
+        onTap: onCollaborate,
+      ),
+    ];
+
+    final moreItems = <AppleToolbarItem>[
+      AppleToolbarItem(
+        icon: palette.isLight
+            ? Icons.dark_mode_outlined
+            : Icons.light_mode_outlined,
+        label: palette.isLight ? 'Modo oscuro' : 'Modo claro',
+        onTap: onToggleTheme,
+      ),
+      AppleToolbarItem(
+        icon: Icons.undo_rounded,
+        label: 'Deshacer',
+        onTap: onUndo,
+      ),
+      AppleToolbarItem(
+        icon: Icons.redo_rounded,
+        label: 'Rehacer',
+        onTap: onRedo,
+      ),
+      AppleToolbarItem(
+        icon: Icons.add_rounded,
+        label: 'Nueva fila',
+        onTap: onAddRow,
+      ),
+      AppleToolbarItem(
+        icon: Icons.description_outlined,
+        label: 'Formulario',
+        onTap: onForm,
+      ),
+      AppleToolbarItem(
+        icon: Icons.layers_outlined,
+        label: AppStrings.editorBatchActions,
+        onTap: onBatch,
+      ),
+      AppleToolbarItem(
+        icon: Icons.pin_drop_outlined,
+        label: 'Ir a...',
+        shortcut: 'Ctrl/Cmd+J',
+        onTap: onJumpTo,
+      ),
+      AppleToolbarItem(
+        icon: Icons.travel_explore_rounded,
+        label: 'Buscar global',
+        shortcut: 'Ctrl/Cmd+Shift+F',
+        onTap: onSearchEverywhere,
+      ),
+      AppleToolbarItem(
+        icon: Icons.table_view_rounded,
+        label: 'Vista base',
+        onTap: () => onSelectView(null),
+      ),
+      for (final view in savedViews.take(6))
+        AppleToolbarItem(
+          icon: view.id == activeViewId
+              ? Icons.visibility_rounded
+              : Icons.visibility_outlined,
+          label: view.name,
+          onTap: () => onSelectView(view.id),
+        ),
+      AppleToolbarItem(
+        icon: Icons.bookmark_add_outlined,
+        label: 'Guardar vista',
+        onTap: onSaveView,
+      ),
+      if (savedViews.isNotEmpty)
+        AppleToolbarItem(
+          icon: Icons.more_horiz_rounded,
+          label: 'Gestionar vistas',
+          onTap: onManageViews,
+        ),
+      AppleToolbarItem(
+        icon: Icons.ios_share_rounded,
+        label: 'Compartir',
+        shortcut: 'Ctrl/Cmd+Shift+E',
+        onTap: onShare,
+      ),
+      AppleToolbarItem(
+        icon: Icons.format_line_spacing_rounded,
+        label: 'Densidad',
+        onTap: onDensity,
+      ),
+      AppleToolbarItem(
+        icon: Icons.functions_rounded,
+        label: AppStrings.editorCompute,
+        onTap: onCompute ?? () {},
+        enabled: onCompute != null,
+      ),
+      AppleToolbarItem(
+        icon: Icons.science_outlined,
+        label: AppStrings.editorDiagnostics,
+        onTap: onSmokeTest,
+      ),
+      AppleToolbarItem(
+        icon: Icons.keyboard,
+        label: 'Atajos',
+        shortcut: 'Ctrl/Cmd+K',
+        onTap: onPalette,
+      ),
+    ];
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(14, top + 8, 14, 10),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(26),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(
-                    sigmaX: sigma, sigmaY: sigma, tileMode: TileMode.decal),
-                child: const SizedBox(),
+      padding: EdgeInsets.fromLTRB(12, top + 4, 12, 8),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+        decoration: BoxDecoration(
+          color: palette.headerCardBg.withValues(
+            alpha: palette.isLight ? 0.96 : 0.88,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: palette.headerCardBorder,
+            width: math.max(palette.hairline, 0.8).toDouble(),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: palette.cellText.withValues(
+                alpha: palette.isLight ? 0.04 : 0.16,
               ),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-              decoration: BoxDecoration(
-                color: palette.headerCardBg,
-                gradient: glassGradient,
-                borderRadius: BorderRadius.circular(26),
-                border: Border.all(
-                    color: palette.headerCardBorder, width: palette.hairline),
-                boxShadow: [
-                  BoxShadow(
-                    color: palette.cellText
-                        .withValues(alpha: palette.isLight ? 0.10 : 0.46),
-                    blurRadius: 30,
-                    offset: const Offset(0, 14),
+          ],
+        ),
+        child: LayoutBuilder(
+          builder: (ctx, cs) {
+            final compact = cs.maxWidth < 980;
+            final veryCompact = cs.maxWidth < 640;
+            final titleSize = veryCompact ? 19.0 : 22.0;
+            final pillGap = veryCompact ? 6.0 : 8.0;
+
+            final titleField = TextField(
+              controller: titleController,
+              focusNode: titleFocus,
+              onChanged: onTitleChanged,
+              maxLines: 1,
+              style: TextStyle(
+                color: palette.fg,
+                fontSize: titleSize,
+                fontWeight: FontWeight.w800,
+                height: 1.1,
+                letterSpacing: 0,
+              ),
+              cursorColor: palette.accent,
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+                border: InputBorder.none,
+                hintText: AppStrings.editorSheetNameHint,
+                hintStyle: TextStyle(color: palette.fgMuted),
+              ),
+            );
+
+            final statusRow = Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              alignment: compact ? WrapAlignment.start : WrapAlignment.end,
+              children: [
+                _SaveStatusChip(
+                  palette: palette,
+                  status: controller.saveStatus,
+                ),
+                _SyncStatusChip(
+                  palette: palette,
+                  status: controller.offlineStatus,
+                  onTap: onOpenOfflineQueue,
+                ),
+                _InlineMetaChip(
+                  palette: palette,
+                  icon: Icons.access_time_rounded,
+                  label: _formatLocalSaved(lastLocalSavedAt),
+                ),
+                _InlineMetaChip(
+                  palette: palette,
+                  icon: Icons.grid_3x3_rounded,
+                  label: _selectionLabel(),
+                ),
+                if (selectedRowsCount > 1)
+                  _InlineMetaChip(
+                    palette: palette,
+                    icon: Icons.checklist_rounded,
+                    label: '$selectedRowsCount filas',
                   ),
+                if (pendingOfflineCount > 0)
+                  _InlineMetaChip(
+                    palette: palette,
+                    icon: Icons.cloud_upload_outlined,
+                    label: '$pendingOfflineCount en cola',
+                    onTap: onOpenOfflineQueue,
+                  ),
+                if (outboxPendingCount > 0)
+                  _InlineMetaChip(
+                    palette: palette,
+                    icon: Icons.schedule_rounded,
+                    label: 'Pendientes: $outboxPendingCount',
+                  ),
+                if (outboxErrorCount > 0)
+                  _InlineMetaChip(
+                    palette: palette,
+                    icon: Icons.error_outline_rounded,
+                    label: 'Error: $outboxErrorCount',
+                  ),
+                if (errorsCount > 0)
+                  _InlineMetaChip(
+                    palette: palette,
+                    icon: Icons.rule_rounded,
+                    label: '$errorsCount errores',
+                  ),
+              ],
+            );
+
+            final toolbar = Wrap(
+              spacing: pillGap,
+              runSpacing: 7,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                FocusTraversalOrder(
+                  order: const NumericFocusOrder(1.0),
+                  child: _PillButton(
+                    palette: palette,
+                    filled: true,
+                    icon: Icons.add_box_outlined,
+                    label: '+ Registro',
+                    semanticsLabel: 'Crear registro r\u00e1pido de campo',
+                    tooltip: 'Crear un registro en modo campo',
+                    onTap: onQuickCapture,
+                  ),
+                ),
+                FocusTraversalOrder(
+                  order: const NumericFocusOrder(1.1),
+                  child: _PillButton(
+                    palette: palette,
+                    filled: false,
+                    icon: Icons.check_circle_outline_rounded,
+                    label: AppStrings.editorSave,
+                    semanticsLabel: AppStrings.semEditorSave,
+                    tooltip: 'Guardar cambios locales',
+                    onTap: onSave,
+                  ),
+                ),
+                FocusTraversalOrder(
+                  order: const NumericFocusOrder(1.2),
+                  child: _PillButton(
+                    palette: palette,
+                    filled: false,
+                    icon: Icons.ios_share_rounded,
+                    label: AppStrings.editorExport,
+                    semanticsLabel: AppStrings.semEditorExport,
+                    tooltip: 'Exportar o compartir planilla',
+                    onTap: onExport,
+                  ),
+                ),
+                FocusTraversalOrder(
+                  order: const NumericFocusOrder(1.3),
+                  child: _PillButton(
+                    palette: palette,
+                    filled: false,
+                    icon: Icons.search_rounded,
+                    label: AppStrings.editorSearch,
+                    semanticsLabel: 'Buscar en la planilla',
+                    tooltip: 'Buscar en la planilla',
+                    onTap: onSearch,
+                  ),
+                ),
+                FocusTraversalOrder(
+                  order: const NumericFocusOrder(1.4),
+                  child: _PillButton(
+                    palette: palette,
+                    filled: false,
+                    icon: Icons.view_column_rounded,
+                    label: 'Columnas',
+                    semanticsLabel: 'Configurar columnas',
+                    tooltip: 'Configurar columnas',
+                    onTap: onColumns,
+                  ),
+                ),
+                FocusTraversalOrder(
+                  order: const NumericFocusOrder(1.5),
+                  child: _ToolbarMenuButton(
+                    palette: palette,
+                    icon: Icons.attachment_rounded,
+                    label: 'Evidencia',
+                    items: evidenceItems,
+                  ),
+                ),
+                FocusTraversalOrder(
+                  order: const NumericFocusOrder(1.6),
+                  child: _ToolbarMenuButton(
+                    palette: palette,
+                    icon: Icons.fact_check_outlined,
+                    label: 'Revisar',
+                    items: reviewItems,
+                  ),
+                ),
+                FocusTraversalOrder(
+                  order: const NumericFocusOrder(1.7),
+                  child: _ToolbarMenuButton(
+                    palette: palette,
+                    icon: Icons.more_horiz_rounded,
+                    label: 'M\u00e1s',
+                    items: moreItems,
+                  ),
+                ),
+              ],
+            );
+
+            return FocusTraversalGroup(
+              policy: OrderedTraversalPolicy(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (compact) ...[
+                    titleField,
+                    const SizedBox(height: 7),
+                    statusRow,
+                  ] else
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(child: titleField),
+                        const SizedBox(width: 14),
+                        Flexible(flex: 2, child: statusRow),
+                      ],
+                    ),
+                  const SizedBox(height: 9),
+                  toolbar,
                 ],
               ),
-              child: LayoutBuilder(
-                builder: (ctx, cs) {
-                  final compact = cs.maxWidth < 720;
-                  final veryCompact = cs.maxWidth < 520;
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
 
-                  final titleSize = veryCompact ? 30.0 : 34.0;
-                  final pillGap = veryCompact ? 8.0 : 10.0;
+class _ToolbarMenuButton extends StatelessWidget {
+  const _ToolbarMenuButton({
+    required this.palette,
+    required this.icon,
+    required this.label,
+    required this.items,
+  });
 
-                  final iconRow = Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.end,
-                    children: [
-                      FocusTraversalOrder(
-                        order: const NumericFocusOrder(0.1),
-                        child: _IconCircleButton(
-                          palette: palette,
-                          icon: palette.isLight
-                              ? Icons.dark_mode_outlined
-                              : Icons.light_mode_outlined,
-                          onTap: onToggleTheme,
-                          tooltip:
-                              palette.isLight ? 'Modo oscuro' : 'Modo claro',
-                        ),
-                      ),
-                      FocusTraversalOrder(
-                        order: const NumericFocusOrder(0.2),
-                        child: _IconCircleButton(
-                          palette: palette,
-                          icon: Icons.undo_rounded,
-                          onTap: onUndo,
-                          tooltip: 'Deshacer',
-                        ),
-                      ),
-                      FocusTraversalOrder(
-                        order: const NumericFocusOrder(0.3),
-                        child: _IconCircleButton(
-                          palette: palette,
-                          icon: Icons.redo_rounded,
-                          onTap: onRedo,
-                          tooltip: 'Rehacer',
-                        ),
-                      ),
-                      FocusTraversalOrder(
-                        order: const NumericFocusOrder(0.4),
-                        child: _IconCircleButton(
-                          palette: palette,
-                          icon: Icons.add_rounded,
-                          onTap: onAddRow,
-                          tooltip: 'Nueva fila',
-                        ),
-                      ),
-                    ],
-                  );
+  final _SheetPalette palette;
+  final IconData icon;
+  final String label;
+  final List<AppleToolbarItem> items;
 
-                  final titleField = TextField(
-                    controller: titleController,
-                    focusNode: titleFocus,
-                    onChanged: onTitleChanged,
-                    maxLines: 1,
-                    style: TextStyle(
-                      color: palette.fg,
-                      fontSize: titleSize,
-                      fontWeight: FontWeight.w900,
-                      height: 1.02,
-                      letterSpacing: -0.6,
-                    ),
-                    cursorColor: palette.accent,
-                    decoration: InputDecoration(
-                      isDense: true,
-                      border: InputBorder.none,
-                      hintText: AppStrings.editorSheetNameHint,
-                      hintStyle: TextStyle(color: palette.fgMuted),
-                    ),
-                  );
-
-                  return FocusTraversalGroup(
-                    policy: OrderedTraversalPolicy(),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (!compact)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: titleField),
-                              const SizedBox(width: 10),
-                              iconRow,
-                            ],
-                          )
-                        else ...[
-                          titleField,
-                          const SizedBox(height: 10),
-                          Align(
-                              alignment: Alignment.centerRight, child: iconRow),
-                        ],
-                        const SizedBox(height: 2),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            _SaveStatusChip(
-                              palette: palette,
-                              status: controller.saveStatus,
-                            ),
-                            _SyncStatusChip(
-                              palette: palette,
-                              status: controller.offlineStatus,
-                              onTap: onOpenOfflineQueue,
-                            ),
-                            _InlineMetaChip(
-                              palette: palette,
-                              icon: Icons.grid_3x3_rounded,
-                              label: _selectionLabel(),
-                            ),
-                            if (selectedRowsCount > 1)
-                              _InlineMetaChip(
-                                palette: palette,
-                                icon: Icons.checklist_rounded,
-                                label: '$selectedRowsCount filas',
-                              ),
-                            if (pendingOfflineCount > 0)
-                              _InlineMetaChip(
-                                palette: palette,
-                                icon: Icons.cloud_upload_outlined,
-                                label: '$pendingOfflineCount en cola',
-                                onTap: onOpenOfflineQueue,
-                              ),
-                            if (outboxPendingCount > 0)
-                              _InlineMetaChip(
-                                palette: palette,
-                                icon: Icons.schedule_rounded,
-                                label: 'Pendientes: $outboxPendingCount',
-                              ),
-                            if (outboxErrorCount > 0)
-                              _InlineMetaChip(
-                                palette: palette,
-                                icon: Icons.error_outline_rounded,
-                                label: 'Error: $outboxErrorCount',
-                              ),
-                            if (errorsCount > 0)
-                              _InlineMetaChip(
-                                palette: palette,
-                                icon: Icons.rule_rounded,
-                                label: '$errorsCount errores',
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            _InlineMetaChip(
-                              palette: palette,
-                              icon: Icons.table_view_rounded,
-                              label: 'Vista base',
-                              onTap: () => onSelectView(null),
-                            ),
-                            for (final view in savedViews.take(5))
-                              _InlineMetaChip(
-                                palette: palette,
-                                icon: view.id == activeViewId
-                                    ? Icons.visibility_rounded
-                                    : Icons.visibility_outlined,
-                                label: view.name,
-                                onTap: () => onSelectView(view.id),
-                              ),
-                            _InlineMetaChip(
-                              palette: palette,
-                              icon: Icons.bookmark_add_outlined,
-                              label: 'Guardar vista',
-                              onTap: onSaveView,
-                            ),
-                            if (savedViews.isNotEmpty)
-                              _InlineMetaChip(
-                                palette: palette,
-                                icon: Icons.more_horiz_rounded,
-                                label: 'Gestionar vistas',
-                                onTap: onManageViews,
-                              ),
-                            _InlineMetaChip(
-                              palette: palette,
-                              icon: pendingReviewViewActive
-                                  ? Icons.pending_actions_rounded
-                                  : Icons.fact_check_outlined,
-                              label: pendingReviewViewActive
-                                  ? 'Pendientes'
-                                  : 'Ver pendientes',
-                              onTap: onTogglePendingReviewView,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _formatLocalSaved(lastLocalSavedAt),
-                          style: TextStyle(
-                            color: palette.fgMuted,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          'ACCIONES PRINCIPALES',
-                          style: TextStyle(
-                            color: palette.fgMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.6,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: pillGap,
-                          runSpacing: 10,
-                          children: [
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(1.0),
-                              child: _PillButton(
-                                palette: palette,
-                                filled: true,
-                                icon: Icons.add_box_outlined,
-                                label: '+ Registro',
-                                semanticsLabel:
-                                    'Crear registro r\u00e1pido de campo',
-                                tooltip: 'Crear un registro en modo campo',
-                                onTap: onQuickCapture,
-                              ),
-                            ),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(1.1),
-                              child: _PillButton(
-                                palette: palette,
-                                filled: false,
-                                icon: Icons.check_circle_outline_rounded,
-                                label: AppStrings.editorSave,
-                                semanticsLabel: AppStrings.semEditorSave,
-                                tooltip: 'Guardar cambios locales',
-                                onTap: onSave,
-                              ),
-                            ),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(1.2),
-                              child: _PillButton(
-                                palette: palette,
-                                filled: false,
-                                icon: Icons.ios_share_rounded,
-                                label: AppStrings.editorExport,
-                                semanticsLabel: AppStrings.semEditorExport,
-                                tooltip: 'Exportar o compartir planilla',
-                                onTap: onExport,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        _ToolbarGroup(
-                          palette: palette,
-                          label: 'Datos',
-                          items: [
-                            AppleToolbarItem(
-                              icon: Icons.description_outlined,
-                              label: 'Formulario',
-                              onTap: onForm,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.layers_outlined,
-                              label: AppStrings.editorBatchActions,
-                              onTap: onBatch,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.view_column_rounded,
-                              label: 'Columnas',
-                              onTap: onColumns,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.pin_drop_outlined,
-                              label: 'Ir a\u2026',
-                              shortcut: 'Ctrl/Cmd+J',
-                              onTap: onJumpTo,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.search_rounded,
-                              label: AppStrings.editorSearch,
-                              shortcut: 'Ctrl/Cmd+F',
-                              onTap: onSearch,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.travel_explore_rounded,
-                              label: 'Buscar global',
-                              shortcut: 'Ctrl/Cmd+Shift+F',
-                              onTap: onSearchEverywhere,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        _ToolbarGroup(
-                          palette: palette,
-                          label: 'Evidencias',
-                          items: [
-                            AppleToolbarItem(
-                              icon: Icons.photo_camera_outlined,
-                              label: 'Camara',
-                              shortcut: 'P',
-                              onTap: onPhoto,
-                              enabled: sensorsEnabled,
-                              onDisabledTap: onPhoto,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.videocam_outlined,
-                              label: 'Video',
-                              onTap: onVideo,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.mic_none_rounded,
-                              label: 'Audio',
-                              shortcut: 'A',
-                              onTap: onAudio,
-                              enabled: sensorsEnabled,
-                              onDisabledTap: onAudio,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.my_location_rounded,
-                              label: 'GPS',
-                              shortcut: 'G',
-                              onTap: onGps,
-                              enabled: sensorsEnabled,
-                              onDisabledTap: onGps,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.tune_rounded,
-                              label: 'Modo GPS',
-                              onTap: onGpsMode,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.attach_file_rounded,
-                              label: 'Adjuntos',
-                              onTap: onAttachments,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.upload_file_outlined,
-                              label: 'Archivo',
-                              onTap: onFile,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        _ToolbarGroup(
-                          palette: palette,
-                          label: 'Revisar',
-                          items: [
-                            AppleToolbarItem(
-                              icon: Icons.verified_rounded,
-                              label: 'Marcar revisado',
-                              onTap: onMarkReviewed,
-                            ),
-                            AppleToolbarItem(
-                              icon: pendingReviewViewActive
-                                  ? Icons.pending_actions_rounded
-                                  : Icons.fact_check_outlined,
-                              label: pendingReviewViewActive
-                                  ? 'Pendientes'
-                                  : 'Ver pendientes',
-                              onTap: onTogglePendingReviewView,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.history_rounded,
-                              label: 'Historial',
-                              onTap: onHistory,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.group_work_outlined,
-                              label: 'Colaborar',
-                              onTap: onCollaborate,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        _ToolbarGroup(
-                          palette: palette,
-                          label: 'M\u00e1s',
-                          items: [
-                            AppleToolbarItem(
-                              icon: Icons.ios_share_rounded,
-                              label: 'Compartir',
-                              shortcut: 'Ctrl/Cmd+Shift+E',
-                              onTap: onShare,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.format_line_spacing_rounded,
-                              label: 'Densidad',
-                              onTap: onDensity,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.functions_rounded,
-                              label: AppStrings.editorCompute,
-                              onTap: onCompute ?? () {},
-                              enabled: onCompute != null,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.science_outlined,
-                              label: AppStrings.editorDiagnostics,
-                              onTap: onSmokeTest,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.keyboard,
-                              label: 'Atajos',
-                              shortcut: 'Ctrl/Cmd+K',
-                              onTap: onPalette,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                },
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<int>(
+      tooltip: label,
+      position: PopupMenuPosition.under,
+      offset: const Offset(0, 6),
+      padding: EdgeInsets.zero,
+      color: palette.menuBg,
+      elevation: 6,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: palette.border,
+          width: math.max(palette.hairline, 0.8).toDouble(),
+        ),
+      ),
+      onSelected: (index) {
+        final item = items[index];
+        if (item.enabled) {
+          item.onTap();
+        } else {
+          item.onDisabledTap?.call();
+        }
+      },
+      itemBuilder: (context) {
+        return <PopupMenuEntry<int>>[
+          for (var i = 0; i < items.length; i++)
+            PopupMenuItem<int>(
+              value: i,
+              enabled: items[i].enabled || items[i].onDisabledTap != null,
+              child: _ToolbarMenuEntry(
+                palette: palette,
+                item: items[i],
               ),
             ),
-            Positioned.fill(
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(26),
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        palette.cellText
-                            .withValues(alpha: palette.isLight ? 0.06 : 0.10),
-                        Colors.transparent,
-                      ],
-                      stops: const [0.0, 0.35],
-                    ),
-                  ),
+        ];
+      },
+      child: _ToolbarMenuPill(
+        palette: palette,
+        icon: icon,
+        label: label,
+      ),
+    );
+  }
+}
+
+class _ToolbarMenuEntry extends StatelessWidget {
+  const _ToolbarMenuEntry({
+    required this.palette,
+    required this.item,
+  });
+
+  final _SheetPalette palette;
+  final AppleToolbarItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = item.enabled || item.onDisabledTap != null;
+    final fg = enabled ? palette.fg : palette.fgMuted.withValues(alpha: 0.54);
+    return Opacity(
+      opacity: enabled ? 1 : 0.7,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 190, maxWidth: 280),
+        child: Row(
+          children: [
+            Icon(item.icon, size: 18, color: fg),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: fg,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  height: 1.1,
+                  letterSpacing: 0,
                 ),
               ),
             ),
+            if ((item.shortcut ?? '').trim().isNotEmpty) ...[
+              const SizedBox(width: 12),
+              Text(
+                item.shortcut!.trim(),
+                style: TextStyle(
+                  color: palette.fgMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  height: 1,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -626,39 +660,48 @@ class _PremiumAppleHeader extends StatelessWidget {
   }
 }
 
-/// Grupo de acciones del editor etiquetado por intención (datos, evidencias,
-/// revisar, más). Mantiene la barra densa pero legible: cada módulo agrupa
-/// acciones afines en lugar de una fila plana de botones.
-class _ToolbarGroup extends StatelessWidget {
-  const _ToolbarGroup({
+class _ToolbarMenuPill extends StatelessWidget {
+  const _ToolbarMenuPill({
     required this.palette,
+    required this.icon,
     required this.label,
-    required this.items,
   });
 
   final _SheetPalette palette;
+  final IconData icon;
   final String label;
-  final List<AppleToolbarItem> items;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 6),
-          child: Text(
-            label.toUpperCase(),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+      decoration: BoxDecoration(
+        color: palette.pillBtnBg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: palette.pillBtnBorder,
+          width: math.max(palette.hairline, 0.8).toDouble(),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 17, color: palette.fg),
+          const SizedBox(width: 7),
+          Text(
+            label,
             style: TextStyle(
-              color: palette.fgMuted,
-              fontSize: 11,
+              color: palette.fg,
               fontWeight: FontWeight.w800,
-              letterSpacing: 0.6,
+              fontSize: 12.5,
+              height: 1.05,
+              letterSpacing: 0,
             ),
           ),
-        ),
-        AppleToolbar(items: items),
-      ],
+          const SizedBox(width: 5),
+          Icon(Icons.expand_more_rounded, size: 16, color: palette.fgMuted),
+        ],
+      ),
     );
   }
 }
@@ -1131,7 +1174,7 @@ class _InlineMetaChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: palette.hintBg,
         borderRadius: BorderRadius.circular(999),
@@ -1140,15 +1183,16 @@ class _InlineMetaChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: palette.fgMuted),
-          const SizedBox(width: 6),
+          Icon(icon, size: 12, color: palette.fgMuted),
+          const SizedBox(width: 5),
           Text(
             label,
             style: TextStyle(
               color: palette.fgMuted,
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: FontWeight.w700,
               height: 1.05,
+              letterSpacing: 0,
             ),
           ),
         ],
@@ -1159,99 +1203,6 @@ class _InlineMetaChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
       child: content,
-    );
-  }
-}
-
-class _IconCircleButton extends StatefulWidget {
-  const _IconCircleButton({
-    required this.palette,
-    required this.icon,
-    required this.onTap,
-    required this.tooltip,
-    String? semanticsLabel,
-  }) : semanticsLabel = semanticsLabel ?? tooltip;
-
-  final _SheetPalette palette;
-  final IconData icon;
-  final VoidCallback onTap;
-  final String tooltip;
-  final String semanticsLabel;
-
-  @override
-  State<_IconCircleButton> createState() => _IconCircleButtonState();
-}
-
-class _IconCircleButtonState extends State<_IconCircleButton> {
-  bool _hovered = false;
-  bool _pressed = false;
-
-  void _setHovered(bool value) {
-    if (_hovered == value) return;
-    setState(() => _hovered = value);
-  }
-
-  void _setPressed(bool value) {
-    if (_pressed == value) return;
-    setState(() => _pressed = value);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final surface = _pressed
-        ? widget.palette.pillBtnBg.withValues(alpha: 0.7)
-        : (_hovered
-            ? widget.palette.pillBtnBg.withValues(alpha: 0.92)
-            : widget.palette.pillBtnBg);
-    return Tooltip(
-      message: widget.tooltip,
-      child: MouseRegion(
-        onEnter: (_) => _setHovered(true),
-        onExit: (_) => _setHovered(false),
-        child: AnimatedScale(
-          duration: AppMotion.quick,
-          curve: AppMotion.standardOut,
-          scale: _pressed ? 0.97 : (_hovered ? 1.05 : 1.0),
-          child: AnimatedContainer(
-            duration: AppMotion.quick,
-            curve: AppMotion.standardOut,
-            decoration: BoxDecoration(
-              boxShadow: _hovered
-                  ? [
-                      BoxShadow(
-                        color: widget.palette.cellText.withValues(
-                            alpha: widget.palette.isLight ? 0.10 : 0.36),
-                        blurRadius: 10,
-                        offset: const Offset(0, 6),
-                      ),
-                    ]
-                  : const [],
-            ),
-            child: InkWell(
-              onTap: widget.onTap,
-              onHighlightChanged: _setPressed,
-              borderRadius: BorderRadius.circular(999),
-              child: Semantics(
-                button: true,
-                label: widget.semanticsLabel,
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: surface,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                        color: widget.palette.pillBtnBorder,
-                        width: widget.palette.hairline),
-                  ),
-                  child: Icon(widget.icon, size: 18, color: widget.palette.fg),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -1315,22 +1266,11 @@ class _PillButtonState extends State<_PillButton> {
         child: AnimatedScale(
           duration: AppMotion.quick,
           curve: AppMotion.standardOut,
-          scale: _pressed ? 0.985 : (_hovered ? 1.03 : 1.0),
+          scale: _pressed ? 0.985 : 1.0,
           child: AnimatedContainer(
             duration: AppMotion.quick,
             curve: AppMotion.standardOut,
-            decoration: BoxDecoration(
-              boxShadow: _hovered
-                  ? [
-                      BoxShadow(
-                        color: widget.palette.cellText.withValues(
-                            alpha: widget.palette.isLight ? 0.10 : 0.32),
-                        blurRadius: 12,
-                        offset: const Offset(0, 8),
-                      ),
-                    ]
-                  : const [],
-            ),
+            decoration: const BoxDecoration(),
             child: InkWell(
               onTap: disabled ? null : widget.onTap,
               onHighlightChanged: disabled ? null : _setPressed,
@@ -1340,7 +1280,7 @@ class _PillButtonState extends State<_PillButton> {
                 label: widget.semanticsLabel,
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                      const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
                   decoration: BoxDecoration(
                     color: bg,
                     borderRadius: BorderRadius.circular(999),
@@ -1351,15 +1291,16 @@ class _PillButtonState extends State<_PillButton> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(widget.icon, size: 18, color: fg),
-                      const SizedBox(width: 8),
+                      Icon(widget.icon, size: 17, color: fg),
+                      const SizedBox(width: 7),
                       Text(
                         widget.label,
                         style: TextStyle(
                           color: fg,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12.5,
                           height: 1.05,
+                          letterSpacing: 0,
                         ),
                       ),
                     ],

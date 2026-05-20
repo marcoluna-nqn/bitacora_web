@@ -24,33 +24,33 @@ _GridMetrics _gridMetricsFor(_GridDensity density) {
   switch (density) {
     case _GridDensity.compact:
       return const _GridMetrics(
-        rowH: 53,
-        headerH: 49,
-        cellPadding: EdgeInsets.symmetric(horizontal: 13, vertical: 10),
-        headerPadding: EdgeInsets.symmetric(horizontal: 13, vertical: 10),
-        cellFontSize: 14.0,
-        headerFontSize: 13.2,
-        indexFontSize: 12.5,
+        rowH: 48,
+        headerH: 42,
+        cellPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        headerPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        cellFontSize: 13.6,
+        headerFontSize: 12.8,
+        indexFontSize: 12.0,
       );
     case _GridDensity.roomy:
       return const _GridMetrics(
-        rowH: 68,
-        headerH: 62,
-        cellPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        headerPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        cellFontSize: 15.6,
-        headerFontSize: 14.6,
-        indexFontSize: 13.8,
+        rowH: 60,
+        headerH: 50,
+        cellPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        headerPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        cellFontSize: 14.8,
+        headerFontSize: 13.8,
+        indexFontSize: 13.0,
       );
     case _GridDensity.normal:
       return const _GridMetrics(
-        rowH: 61,
-        headerH: 56,
-        cellPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 11),
-        headerPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 11),
-        cellFontSize: 15.5,
-        headerFontSize: 14.5,
-        indexFontSize: 13.7,
+        rowH: 52,
+        headerH: 44,
+        cellPadding: EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+        headerPadding: EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+        cellFontSize: 14.2,
+        headerFontSize: 13.2,
+        indexFontSize: 12.4,
       );
   }
 }
@@ -167,13 +167,13 @@ class _GridView extends StatelessWidget {
                 'boundedH=${c.hasBoundedHeight} boundedW=${c.hasBoundedWidth}',
               );
             }
-            final shellRadius = BorderRadius.circular(22);
+            final shellRadius = BorderRadius.circular(12);
             final shellShadow = palette.cellText.withValues(
-              alpha: palette.isLight ? 0.05 : 0.2,
+              alpha: palette.isLight ? 0.03 : 0.10,
             );
 
             return Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: palette.gridBg,
@@ -185,8 +185,8 @@ class _GridView extends StatelessWidget {
                   boxShadow: [
                     BoxShadow(
                       color: shellShadow,
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
@@ -534,10 +534,10 @@ class _HeaderCell extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: palette.headerText,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
                   fontSize: metrics.headerFontSize,
                   height: 1.05,
-                  letterSpacing: 0.1,
+                  letterSpacing: 0,
                 ),
               ),
             ),
@@ -944,7 +944,7 @@ class _DataCell extends StatelessWidget {
                     fontSize: metrics.cellFontSize,
                     height: 1.1,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                    letterSpacing: selected ? -0.12 : -0.04,
+                    letterSpacing: 0,
                   ),
                 ),
               ),

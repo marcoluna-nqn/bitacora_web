@@ -4,7 +4,6 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:math' as math;
-import 'dart:ui' show ImageFilter, TileMode;
 
 import 'package:archive/archive.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -103,4 +102,3 @@ part 'widgets/grid_host.dart';
 part 'widgets/mobile_editor_widgets.dart';
 part 'widgets/editor_backdrop.dart';
 part '../../widgets/mobile_notes_grid.dart';
-
