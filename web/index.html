@@ -228,6 +228,24 @@
       var hardKey = 'bitflow_boot_build';
       var sessionKey = 'bitflow_boot_hard_done';
 
+      // Permite a lo sumo UNA recarga de mantenimiento (service worker /
+      // hard-refresh) por sesion. Sin este tope, un service worker en
+      // estado "waiting" puede recargar la pagina en bucle y Flutter nunca
+      // llega a montar: el splash HTML queda visible para siempre.
+      function allowBootReloadOnce() {
+        try {
+          if (sessionStorage.getItem('bitflow_boot_reload_done') === '1') {
+            return false;
+          }
+          sessionStorage.setItem('bitflow_boot_reload_done', '1');
+          return true;
+        } catch (_) {}
+        if (window.__bitflowBootReloaded) return false;
+        window.__bitflowBootReloaded = true;
+        return true;
+      }
+      window.__bitflowAllowBootReloadOnce = allowBootReloadOnce;
+
       function withTimeout(promise, timeoutMs) {
         return Promise.race([
           promise,
@@ -248,8 +266,10 @@
             sessionBuild = sessionStorage.getItem(sessionKey) || '';
           } catch (_) {}
 
+          // Ruta relativa: respeta el <base href> (sirve igual con base
+          // "/bitacora_web/" en GitHub Pages que con "/" en Vercel/local).
           var response = await withTimeout(
-            fetch('/bitacora_web/version.json?ts=' + Date.now(), {
+            fetch('version.json?ts=' + Date.now(), {
               cache: 'no-store'
             }),
             1500,
@@ -305,7 +325,9 @@
           } catch (_) {}
 
           current.searchParams.set('hard', remoteBuild);
-          window.location.replace(current.pathname + current.search + current.hash);
+          if (allowBootReloadOnce()) {
+            window.location.replace(current.pathname + current.search + current.hash);
+          }
         } catch (_) {
           // Silencioso: si falla el guard, sigue boot normal.
         }
@@ -448,7 +470,10 @@
         } catch (_) {}
 
         try {
-          window.location.reload();
+          if (window.__bitflowAllowBootReloadOnce &&
+              window.__bitflowAllowBootReloadOnce()) {
+            window.location.reload();
+          }
         } catch (_) {}
       }
 
@@ -513,7 +538,10 @@
           navigator.serviceWorker.addEventListener('controllerchange', function () {
             if (!swReloadOnControllerChange) return;
             swReloadOnControllerChange = false;
-            window.location.reload();
+            if (window.__bitflowAllowBootReloadOnce &&
+                window.__bitflowAllowBootReloadOnce()) {
+              window.location.reload();
+            }
           });
         } catch (_) {}
 
