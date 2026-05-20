@@ -126,15 +126,15 @@ class _StartPageV2State extends State<StartPageV2> {
             ListTile(
               key: const ValueKey('create-sheet-choice-blank'),
               leading: const Icon(Icons.add_rounded),
-              title: const Text('Planilla vacía'),
-              subtitle: const Text('Relevamiento con nombre automático'),
+              title: const Text('Planilla en blanco'),
+              subtitle: const Text('Empezás de cero con un nombre automático'),
               onTap: () => Navigator.of(context).pop('blank'),
             ),
             ListTile(
               leading: const Icon(Icons.science_outlined),
               title: const Text('Plantilla técnica'),
               subtitle:
-                  const Text('Relevamiento con evidencias listo para usar'),
+                  const Text('Relevamiento con columnas y evidencias listas'),
               onTap: () => Navigator.of(context).pop('demo'),
             ),
           ],
@@ -187,6 +187,19 @@ class _StartPageV2State extends State<StartPageV2> {
     );
   }
 
+  Future<void> _openSheet(SheetMeta meta) async {
+    await Navigator.of(context).push(
+      CupertinoPageRoute<void>(
+        builder: (_) => EditorScreen(
+          sheetId: meta.id,
+          initialName: meta.title,
+          isLight: widget.isLight,
+          onToggleTheme: widget.onToggleTheme,
+        ),
+      ),
+    );
+  }
+
   Future<void> _openQuickSwitcher() async {
     final sheets = SheetStore.list();
     await showDialog<void>(
@@ -205,7 +218,7 @@ class _StartPageV2State extends State<StartPageV2> {
           autofocus: true,
           child: AlertDialog(
             key: const ValueKey('command_palette_dialog'),
-            title: const Text('Quick Switcher'),
+            title: const Text('Buscar planilla'),
             content: SizedBox(
               width: 420,
               child: Column(
@@ -213,9 +226,9 @@ class _StartPageV2State extends State<StartPageV2> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (sheets.isEmpty)
-                    const Text('No hay planillas todavía.')
+                    const Text('Todavía no hay planillas guardadas.')
                   else
-                    for (final sheet in sheets.take(5))
+                    for (final sheet in sheets.take(6))
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(
@@ -226,7 +239,7 @@ class _StartPageV2State extends State<StartPageV2> {
                         subtitle: Text('${sheet.rows} filas'),
                         onTap: () {
                           Navigator.of(dialogContext).pop();
-                          _openMostRecentSheet();
+                          _openSheet(sheet);
                         },
                       ),
                 ],
@@ -318,7 +331,7 @@ class _StartPageV2State extends State<StartPageV2> {
       return KeyEventResult.handled;
     }
     if (isModifierPressed && event.logicalKey == LogicalKeyboardKey.keyN) {
-      _showCreateSheetChoices();
+      _openBlankSheet();
       return KeyEventResult.handled;
     }
     if (isModifierPressed && event.logicalKey == LogicalKeyboardKey.keyO) {
@@ -384,33 +397,35 @@ class _StartPageV2State extends State<StartPageV2> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _Hero(wide: wide),
+                          _Hero(sheetCount: sheets.length, wide: wide),
                           const SizedBox(height: 24),
-                          _ActionGrid(
+                          _PrimaryActions(
                             sheets: sheets,
                             wide: wide,
                             onNew: _openBlankSheet,
                             onRecent: _openMostRecentSheet,
                             onSearch: _openQuickSwitcher,
-                            onTemplate: _openTechnicalDemo,
                           ),
-                          const SizedBox(height: 10),
-                          TextButton.icon(
-                            onPressed: _showCreateSheetChoices,
-                            icon: const Icon(Icons.add_rounded),
-                            label: const Text('Crear hoja'),
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: _showCreateSheetChoices,
+                              icon: const Icon(Icons.science_outlined,
+                                  size: 18),
+                              label: const Text('Crear hoja'),
+                            ),
                           ),
-                          const SizedBox(height: 32),
-                          _DemoPanel(),
                           const SizedBox(height: 32),
                           SectionHeader(
                             title: 'Continuar trabajo',
                             subtitle: sheets.isEmpty
-                                ? 'Tus relevamientos recientes aparecerán acá.'
+                                ? 'Tus relevamientos aparecerán acá para retomarlos.'
                                 : '${sheets.length} planillas guardadas en este dispositivo.',
                           ),
                           const SizedBox(height: 12),
                           _RecentSheetsPanel(
+                            key: const ValueKey('start-recent-zone'),
                             sheets: sheets,
                             onOpen: (id) async {
                               if (!mounted) return;
@@ -418,22 +433,9 @@ class _StartPageV2State extends State<StartPageV2> {
                                 (s) => s.id == id,
                                 orElse: () => sheets.first,
                               );
-                              await Navigator.of(context).push(
-                                CupertinoPageRoute<void>(
-                                  builder: (_) => EditorScreen(
-                                    sheetId: meta.id,
-                                    initialName: meta.title,
-                                    isLight: widget.isLight,
-                                    onToggleTheme: widget.onToggleTheme,
-                                  ),
-                                ),
-                              );
+                              await _openSheet(meta);
                             },
-                          ),
-                          const SizedBox(height: 32),
-                          _AutomationPanel(
-                            key: const ValueKey('start-automation-zone'),
-                            onDemo: _openTechnicalDemo,
+                            onCreate: _openBlankSheet,
                           ),
                         ],
                       ),
@@ -513,13 +515,6 @@ class _BrandRow extends StatelessWidget {
           ),
         ),
         IconButton(
-          key: const ValueKey('start-more-button'),
-          onPressed: onMore,
-          icon: const Icon(CupertinoIcons.ellipsis),
-          color: t.colors.textPrimary,
-          tooltip: 'Más opciones',
-        ),
-        IconButton(
           onPressed: onToggleTheme,
           icon: Icon(
             isLight ? CupertinoIcons.moon : CupertinoIcons.sun_max,
@@ -527,14 +522,22 @@ class _BrandRow extends StatelessWidget {
           color: t.colors.textPrimary,
           tooltip: isLight ? 'Modo oscuro' : 'Modo claro',
         ),
+        IconButton(
+          key: const ValueKey('start-more-button'),
+          onPressed: onMore,
+          icon: const Icon(CupertinoIcons.ellipsis),
+          color: t.colors.textPrimary,
+          tooltip: 'Más opciones',
+        ),
       ],
     );
   }
 }
 
 class _Hero extends StatelessWidget {
-  const _Hero({required this.wide});
+  const _Hero({required this.sheetCount, required this.wide});
 
+  final int sheetCount;
   final bool wide;
 
   @override
@@ -550,32 +553,15 @@ class _Hero extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: t.colors.surfaceMuted,
-            borderRadius: BorderRadius.circular(t.radii.pill),
-            border: Border.all(color: t.colors.border),
-          ),
-          child: Text(
-            'Local · Sin servidores · Listo para campo',
-            style: t.text.labelSmall?.copyWith(
-              color: t.colors.textSecondary,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
         Text(
           'Planillas técnicas con\nevidencias en campo.',
           style: titleStyle,
         ),
         const SizedBox(height: 12),
         ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: 680),
           child: Text(
-            'Bit Flow organiza relevamientos, registros técnicos y adjuntos en una tabla rápida, local y lista para exportar.',
+            'Cargá relevamientos, registros técnicos y adjuntos en una tabla local, lista para exportar. Funciona sin conexión.',
             style: t.text.bodyLarge?.copyWith(
               color: t.colors.textSecondary,
               height: 1.45,
@@ -588,14 +574,13 @@ class _Hero extends StatelessWidget {
   }
 }
 
-class _ActionGrid extends StatelessWidget {
-  const _ActionGrid({
+class _PrimaryActions extends StatelessWidget {
+  const _PrimaryActions({
     required this.sheets,
     required this.wide,
     required this.onNew,
     required this.onRecent,
     required this.onSearch,
-    required this.onTemplate,
   });
 
   final List<SheetMeta> sheets;
@@ -603,60 +588,58 @@ class _ActionGrid extends StatelessWidget {
   final VoidCallback onNew;
   final VoidCallback onRecent;
   final VoidCallback onSearch;
-  final VoidCallback onTemplate;
 
   @override
   Widget build(BuildContext context) {
-    final recentTitle = sheets.isEmpty
-        ? 'Tu relevamiento reciente aparecerá acá'
-        : _StartPageV2State._sheetTitle(sheets.first);
-    final tiles = <Widget>[
-      _ActionTile(
-        valueKey: const ValueKey('start-primary-new'),
-        icon: Icons.add_rounded,
-        title: 'Nuevo relevamiento',
-        subtitle: 'Crea una hoja con nombre único',
-        accent: true,
-        onTap: onNew,
-      ),
-      _ActionTile(
-        valueKey: const ValueKey('start-primary-open-recent'),
-        icon: Icons.history_rounded,
-        title: 'Continuar último',
-        subtitle: recentTitle,
-        onTap: onRecent,
-      ),
-      _ActionTile(
-        valueKey: const ValueKey('start-primary-search'),
-        icon: Icons.search_rounded,
-        title: 'Buscar planillas',
-        subtitle: 'Saltar rápido a un trabajo',
-        onTap: onSearch,
-      ),
-      _ActionTile(
-        valueKey: const ValueKey('start-primary-automate'),
-        icon: Icons.auto_awesome_rounded,
-        title: 'Plantilla técnica',
-        subtitle: 'Patagonia Ingeniería · demo LinkedIn',
-        onTap: onTemplate,
-      ),
-    ];
+    final hasSheets = sheets.isNotEmpty;
+    final recentSubtitle = hasSheets
+        ? _StartPageV2State._sheetTitle(sheets.first)
+        : 'Sin planillas recientes todavía';
 
-    return LayoutBuilder(
-      builder: (ctx, constraints) {
-        final cols = wide && constraints.maxWidth > 720 ? 2 : 1;
-        final spacing = 14.0;
-        final tileWidth = cols == 1
-            ? constraints.maxWidth
-            : (constraints.maxWidth - spacing) / 2;
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: [
-            for (final tile in tiles) SizedBox(width: tileWidth, child: tile),
-          ],
-        );
-      },
+    final primary = _ActionTile(
+      valueKey: const ValueKey('start-primary-new'),
+      icon: Icons.add_rounded,
+      title: 'Nuevo relevamiento',
+      subtitle: 'Crea una planilla en blanco y empezá a cargar datos',
+      accent: true,
+      onTap: onNew,
+    );
+
+    final recent = _ActionTile(
+      valueKey: const ValueKey('start-primary-open-recent'),
+      icon: Icons.history_rounded,
+      title: 'Continuar último',
+      subtitle: recentSubtitle,
+      onTap: onRecent,
+    );
+
+    final search = _ActionTile(
+      valueKey: const ValueKey('start-primary-search'),
+      icon: Icons.search_rounded,
+      title: 'Buscar planillas',
+      subtitle: 'Abrí una planilla guardada',
+      onTap: onSearch,
+    );
+
+    return Column(
+      children: [
+        primary,
+        const SizedBox(height: 12),
+        if (wide)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: recent),
+              const SizedBox(width: 12),
+              Expanded(child: search),
+            ],
+          )
+        else ...[
+          recent,
+          const SizedBox(height: 12),
+          search,
+        ],
+      ],
     );
   }
 }
@@ -859,6 +842,11 @@ class _OnboardingCard extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: [
+              FilledButton.icon(
+                onPressed: onCreate,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Crear hoja'),
+              ),
               OutlinedButton(
                 onPressed: onNext,
                 child: const Text('Siguiente'),
@@ -866,11 +854,6 @@ class _OnboardingCard extends StatelessWidget {
               TextButton(
                 onPressed: onDismiss,
                 child: const Text('Ahora no'),
-              ),
-              FilledButton.icon(
-                onPressed: onCreate,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Crear hoja'),
               ),
             ],
           ),
@@ -882,48 +865,27 @@ class _OnboardingCard extends StatelessWidget {
 
 class _RecentSheetsPanel extends StatelessWidget {
   const _RecentSheetsPanel({
+    super.key,
     required this.sheets,
     required this.onOpen,
+    required this.onCreate,
   });
 
   final List<SheetMeta> sheets;
   final Future<void> Function(String) onOpen;
+  final VoidCallback onCreate;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
     if (sheets.isEmpty) {
-      return AppCard(
-        padding: const EdgeInsets.all(22),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: t.colors.surfaceMuted,
-                borderRadius: BorderRadius.circular(t.radii.md),
-                border: Border.all(color: t.colors.border),
-              ),
-              alignment: Alignment.center,
-              child: Icon(
-                Icons.history_rounded,
-                size: 20,
-                color: t.colors.textSecondary,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                'Cuando abras una planilla, aparecerá acá para retomarla rápido.',
-                style: t.text.bodyMedium?.copyWith(
-                  color: t.colors.textSecondary,
-                  height: 1.35,
-                ),
-              ),
-            ),
-          ],
-        ),
+      return EmptyState(
+        icon: Icons.table_chart_outlined,
+        title: 'Todavía no hay planillas',
+        message:
+            'Creá tu primer relevamiento. Quedará guardado en este dispositivo para retomarlo cuando quieras.',
+        actionLabel: 'Nuevo relevamiento',
+        onAction: onCreate,
       );
     }
 
@@ -1006,171 +968,6 @@ class _RecentRow extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _AutomationPanel extends StatelessWidget {
-  const _AutomationPanel({
-    super.key,
-    required this.onDemo,
-  });
-
-  final VoidCallback onDemo;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return AppCard(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: t.colors.surfaceMuted,
-                  borderRadius: BorderRadius.circular(t.radii.sm),
-                  border: Border.all(color: t.colors.border),
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  Icons.auto_awesome_outlined,
-                  size: 18,
-                  color: t.colors.textPrimary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Automatizaciones',
-                  style: t.text.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.1,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Acciones listas para relevamientos técnicos.',
-            style: t.text.bodyMedium?.copyWith(
-              color: t.colors.textSecondary,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 14),
-          AppButton(
-            label: 'Plantilla técnica',
-            icon: Icons.science_outlined,
-            variant: AppButtonVariant.secondary,
-            onPressed: onDemo,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DemoPanel extends StatelessWidget {
-  const _DemoPanel();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    final rows = const [
-      ['120', 'Acceso norte', 'Cartel principal', 'OK'],
-      ['310', 'Sector bombas', 'Baliza seguridad', 'Crítico'],
-      ['1780', 'Línea peatonal', 'Flecha direccional', 'Atención'],
-    ];
-
-    return AppCard(
-      padding: EdgeInsets.zero,
-      shadows: t.shadows.card,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: t.colors.surfaceMuted,
-                    borderRadius: BorderRadius.circular(t.radii.sm),
-                    border: Border.all(color: t.colors.border),
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.table_chart_outlined,
-                    size: 18,
-                    color: t.colors.textPrimary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Patagonia Ingeniería - demo técnica',
-                        style: t.text.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.1,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Local · Guardado en este dispositivo',
-                        style: t.text.bodySmall?.copyWith(
-                          color: t.colors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Divider(height: 1, color: t.colors.border),
-          Semantics(
-            label:
-                'Vista previa de relevamiento técnico con progresiva, sector, elemento y estado.',
-            child: ExcludeSemantics(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  headingRowColor: WidgetStatePropertyAll(
-                    t.colors.surfaceMuted,
-                  ),
-                  dividerThickness: 0,
-                  columns: const [
-                    DataColumn(label: Text('Progresiva')),
-                    DataColumn(label: Text('Sector')),
-                    DataColumn(label: Text('Elemento')),
-                    DataColumn(label: Text('Estado')),
-                  ],
-                  rows: [
-                    for (final row in rows)
-                      DataRow(
-                        cells: [
-                          for (final cell in row) DataCell(Text(cell)),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

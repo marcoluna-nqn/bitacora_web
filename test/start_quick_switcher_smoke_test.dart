@@ -36,7 +36,7 @@ void main() {
 
     expect(
         find.byKey(const ValueKey('command_palette_dialog')), findsOneWidget);
-    expect(find.text('Quick Switcher'), findsOneWidget);
+    expect(find.text('Buscar planilla'), findsOneWidget);
 
     await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
     await tester.sendKeyUpEvent(LogicalKeyboardKey.escape);

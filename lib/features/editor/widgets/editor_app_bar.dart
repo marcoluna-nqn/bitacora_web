@@ -384,24 +384,22 @@ class _PremiumAppleHeader extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 14),
+                        Text(
+                          'ACCIONES PRINCIPALES',
+                          style: TextStyle(
+                            color: palette.fgMuted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
                         Wrap(
                           spacing: pillGap,
                           runSpacing: 10,
                           children: [
                             FocusTraversalOrder(
                               order: const NumericFocusOrder(1.0),
-                              child: _PillButton(
-                                palette: palette,
-                                filled: false,
-                                icon: Icons.check_circle_outline_rounded,
-                                label: AppStrings.editorSave,
-                                semanticsLabel: AppStrings.semEditorSave,
-                                tooltip: 'Guardar cambios locales',
-                                onTap: onSave,
-                              ),
-                            ),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(1.1),
                               child: _PillButton(
                                 palette: palette,
                                 filled: true,
@@ -414,109 +412,19 @@ class _PremiumAppleHeader extends StatelessWidget {
                               ),
                             ),
                             FocusTraversalOrder(
+                              order: const NumericFocusOrder(1.1),
+                              child: _PillButton(
+                                palette: palette,
+                                filled: false,
+                                icon: Icons.check_circle_outline_rounded,
+                                label: AppStrings.editorSave,
+                                semanticsLabel: AppStrings.semEditorSave,
+                                tooltip: 'Guardar cambios locales',
+                                onTap: onSave,
+                              ),
+                            ),
+                            FocusTraversalOrder(
                               order: const NumericFocusOrder(1.2),
-                              child: _PillButton(
-                                palette: palette,
-                                filled: false,
-                                icon: Icons.description_outlined,
-                                label: 'Formulario',
-                                semanticsLabel: 'Abrir modo formulario',
-                                tooltip: 'Editar fila en modo formulario',
-                                onTap: onForm,
-                              ),
-                            ),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(1.25),
-                              child: _PillButton(
-                                palette: palette,
-                                filled: false,
-                                icon: Icons.search_rounded,
-                                label: AppStrings.editorSearch,
-                                semanticsLabel: AppStrings.semEditorSearch,
-                                tooltip: 'Buscar en todas las celdas',
-                                onTap: onSearch,
-                              ),
-                            ),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(1.27),
-                              child: _PillButton(
-                                palette: palette,
-                                filled: false,
-                                icon: Icons.travel_explore_rounded,
-                                label: 'Buscar global',
-                                semanticsLabel:
-                                    'Buscar en esta planilla o en todas',
-                                tooltip:
-                                    'B\u00fasqueda global (Ctrl/Cmd+Shift+F)',
-                                onTap: onSearchEverywhere,
-                              ),
-                            ),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(1.3),
-                              child: _PillButton(
-                                palette: palette,
-                                filled: false,
-                                icon: Icons.pin_drop_outlined,
-                                label: 'Ir a\u2026',
-                                semanticsLabel: 'Ir r\u00e1pido por fila o ID',
-                                tooltip: 'Ir a fila o ID r\u00e1pidamente',
-                                onTap: onJumpTo,
-                              ),
-                            ),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(1.4),
-                              child: _PillButton(
-                                palette: palette,
-                                filled: false,
-                                icon: Icons.view_column_rounded,
-                                label: 'Columnas',
-                                semanticsLabel:
-                                    'Abrir panel de configuraci\u00f3n de columnas',
-                                tooltip: 'Tipos, orden, visibilidad y fijar',
-                                onTap: onColumns,
-                              ),
-                            ),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(1.45),
-                              child: _PillButton(
-                                palette: palette,
-                                filled: false,
-                                icon: Icons.attach_file_rounded,
-                                label: 'Adjuntos',
-                                semanticsLabel:
-                                    'Abrir adjuntos de celda activa',
-                                tooltip: 'Abrir panel de adjuntos',
-                                onTap: onAttachments,
-                              ),
-                            ),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(1.47),
-                              child: _PillButton(
-                                palette: palette,
-                                filled: false,
-                                icon: Icons.history_rounded,
-                                label: 'Historial',
-                                semanticsLabel: 'Abrir historial de cambios',
-                                tooltip: 'Auditoria de cambios',
-                                onTap: onHistory,
-                              ),
-                            ),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(1.49),
-                              child: _PillButton(
-                                palette: palette,
-                                filled: false,
-                                icon: Icons.group_work_outlined,
-                                label: 'Colaborar',
-                                semanticsLabel:
-                                    'Flujo de colaboracion por paquete',
-                                tooltip:
-                                    'Exportar, importar y mergear paquetes',
-                                onTap: onCollaborate,
-                              ),
-                            ),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(1.5),
                               child: _PillButton(
                                 palette: palette,
                                 filled: false,
@@ -527,42 +435,13 @@ class _PremiumAppleHeader extends StatelessWidget {
                                 onTap: onExport,
                               ),
                             ),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(1.6),
-                              child: _PillButton(
-                                palette: palette,
-                                filled: false,
-                                icon: Icons.layers_outlined,
-                                label: AppStrings.editorBatchActions,
-                                semanticsLabel: 'Abrir acciones por lote',
-                                tooltip:
-                                    'Acciones r\u00e1pidas para filas seleccionadas',
-                                onTap: onBatch,
-                              ),
-                            ),
-                            FocusTraversalOrder(
-                              order: const NumericFocusOrder(1.65),
-                              child: _PillButton(
-                                palette: palette,
-                                filled: false,
-                                icon: Icons.verified_rounded,
-                                label: 'Marcar revisado',
-                                semanticsLabel:
-                                    'Marcar filas seleccionadas como revisadas',
-                                tooltip: 'Workflow de revision',
-                                onTap: onMarkReviewed,
-                              ),
-                            ),
                           ],
                         ),
                         const SizedBox(height: 12),
-                        AppleToolbar(
+                        _ToolbarGroup(
+                          palette: palette,
+                          label: 'Datos',
                           items: [
-                            AppleToolbarItem(
-                              icon: Icons.add_box_outlined,
-                              label: '+ Registro',
-                              onTap: onQuickCapture,
-                            ),
                             AppleToolbarItem(
                               icon: Icons.description_outlined,
                               label: 'Formulario',
@@ -570,22 +449,19 @@ class _PremiumAppleHeader extends StatelessWidget {
                             ),
                             AppleToolbarItem(
                               icon: Icons.layers_outlined,
-                              label: 'Acciones',
+                              label: AppStrings.editorBatchActions,
                               onTap: onBatch,
                             ),
                             AppleToolbarItem(
-                              icon: Icons.verified_rounded,
-                              label: 'Revisado',
-                              onTap: onMarkReviewed,
+                              icon: Icons.view_column_rounded,
+                              label: 'Columnas',
+                              onTap: onColumns,
                             ),
                             AppleToolbarItem(
-                              icon: pendingReviewViewActive
-                                  ? Icons.pending_actions_rounded
-                                  : Icons.fact_check_outlined,
-                              label: pendingReviewViewActive
-                                  ? 'Pendientes'
-                                  : 'Ver pendientes',
-                              onTap: onTogglePendingReviewView,
+                              icon: Icons.pin_drop_outlined,
+                              label: 'Ir a\u2026',
+                              shortcut: 'Ctrl/Cmd+J',
+                              onTap: onJumpTo,
                             ),
                             AppleToolbarItem(
                               icon: Icons.search_rounded,
@@ -599,40 +475,13 @@ class _PremiumAppleHeader extends StatelessWidget {
                               shortcut: 'Ctrl/Cmd+Shift+F',
                               onTap: onSearchEverywhere,
                             ),
-                            AppleToolbarItem(
-                              icon: Icons.pin_drop_outlined,
-                              label: 'Ir a\u2026',
-                              shortcut: 'Ctrl/Cmd+J',
-                              onTap: onJumpTo,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.view_column_rounded,
-                              label: 'Columnas',
-                              onTap: onColumns,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.history_rounded,
-                              label: 'Historial',
-                              onTap: onHistory,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.my_location_rounded,
-                              label: 'GPS',
-                              shortcut: 'G',
-                              onTap: onGps,
-                              enabled: sensorsEnabled,
-                              onDisabledTap: onGps,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.tune_rounded,
-                              label: 'Modo GPS',
-                              onTap: onGpsMode,
-                            ),
-                            AppleToolbarItem(
-                              icon: Icons.format_line_spacing_rounded,
-                              label: 'Densidad',
-                              onTap: onDensity,
-                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        _ToolbarGroup(
+                          palette: palette,
+                          label: 'Evidencias',
+                          items: [
                             AppleToolbarItem(
                               icon: Icons.photo_camera_outlined,
                               label: 'Camara',
@@ -655,30 +504,76 @@ class _PremiumAppleHeader extends StatelessWidget {
                               onDisabledTap: onAudio,
                             ),
                             AppleToolbarItem(
+                              icon: Icons.my_location_rounded,
+                              label: 'GPS',
+                              shortcut: 'G',
+                              onTap: onGps,
+                              enabled: sensorsEnabled,
+                              onDisabledTap: onGps,
+                            ),
+                            AppleToolbarItem(
+                              icon: Icons.tune_rounded,
+                              label: 'Modo GPS',
+                              onTap: onGpsMode,
+                            ),
+                            AppleToolbarItem(
                               icon: Icons.attach_file_rounded,
                               label: 'Adjuntos',
                               onTap: onAttachments,
                             ),
                             AppleToolbarItem(
-                              icon: Icons.attach_file_rounded,
+                              icon: Icons.upload_file_outlined,
                               label: 'Archivo',
                               onTap: onFile,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        _ToolbarGroup(
+                          palette: palette,
+                          label: 'Revisar',
+                          items: [
+                            AppleToolbarItem(
+                              icon: Icons.verified_rounded,
+                              label: 'Marcar revisado',
+                              onTap: onMarkReviewed,
+                            ),
+                            AppleToolbarItem(
+                              icon: pendingReviewViewActive
+                                  ? Icons.pending_actions_rounded
+                                  : Icons.fact_check_outlined,
+                              label: pendingReviewViewActive
+                                  ? 'Pendientes'
+                                  : 'Ver pendientes',
+                              onTap: onTogglePendingReviewView,
+                            ),
+                            AppleToolbarItem(
+                              icon: Icons.history_rounded,
+                              label: 'Historial',
+                              onTap: onHistory,
                             ),
                             AppleToolbarItem(
                               icon: Icons.group_work_outlined,
                               label: 'Colaborar',
                               onTap: onCollaborate,
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        _ToolbarGroup(
+                          palette: palette,
+                          label: 'M\u00e1s',
+                          items: [
                             AppleToolbarItem(
-                              icon: Icons.download_rounded,
-                              label: 'Exportar',
-                              shortcut: 'Ctrl/Cmd+E',
-                              onTap: onExport,
+                              icon: Icons.ios_share_rounded,
+                              label: 'Compartir',
+                              shortcut: 'Ctrl/Cmd+Shift+E',
+                              onTap: onShare,
                             ),
                             AppleToolbarItem(
-                              icon: Icons.science_outlined,
-                              label: AppStrings.editorDiagnostics,
-                              onTap: onSmokeTest,
+                              icon: Icons.format_line_spacing_rounded,
+                              label: 'Densidad',
+                              onTap: onDensity,
                             ),
                             AppleToolbarItem(
                               icon: Icons.functions_rounded,
@@ -687,10 +582,9 @@ class _PremiumAppleHeader extends StatelessWidget {
                               enabled: onCompute != null,
                             ),
                             AppleToolbarItem(
-                              icon: Icons.ios_share_rounded,
-                              label: 'Compartir',
-                              shortcut: 'Ctrl/Cmd+Shift+E',
-                              onTap: onShare,
+                              icon: Icons.science_outlined,
+                              label: AppStrings.editorDiagnostics,
+                              onTap: onSmokeTest,
                             ),
                             AppleToolbarItem(
                               icon: Icons.keyboard,
@@ -728,6 +622,43 @@ class _PremiumAppleHeader extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Grupo de acciones del editor etiquetado por intención (datos, evidencias,
+/// revisar, más). Mantiene la barra densa pero legible: cada módulo agrupa
+/// acciones afines en lugar de una fila plana de botones.
+class _ToolbarGroup extends StatelessWidget {
+  const _ToolbarGroup({
+    required this.palette,
+    required this.label,
+    required this.items,
+  });
+
+  final _SheetPalette palette;
+  final String label;
+  final List<AppleToolbarItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
+          child: Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              color: palette.fgMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.6,
+            ),
+          ),
+        ),
+        AppleToolbar(items: items),
+      ],
     );
   }
 }

@@ -37,20 +37,17 @@ void main() {
     expect(find.byKey(const ValueKey('start-primary-open-recent')),
         findsOneWidget);
     expect(find.byKey(const ValueKey('start-primary-search')), findsOneWidget);
-    expect(
-        find.byKey(const ValueKey('start-primary-automate')), findsOneWidget);
     expect(find.byKey(const ValueKey('start-more-button')), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('start-automation-zone')),
+      find.byKey(const ValueKey('start-recent-zone')),
       300,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
     expect(find.text('Continuar trabajo'), findsOneWidget);
-    expect(find.byKey(const ValueKey('start-automation-zone')), findsOneWidget);
-    expect(find.text('Automatizaciones'), findsOneWidget);
+    expect(find.byKey(const ValueKey('start-recent-zone')), findsOneWidget);
     expect(find.text('Smoke Sheet A'), findsWidgets);
     expect(find.byKey(const ValueKey('start-pro-disclosure')), findsNothing);
 
