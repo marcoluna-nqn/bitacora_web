@@ -4,7 +4,6 @@ import 'dart:ui' show PointerDeviceKind, PlatformDispatcher;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 
 import 'firebase_options.dart';
@@ -209,9 +208,7 @@ class _AppState extends State<App> {
   void initState() {
     super.initState();
 
-    final platformBrightness =
-        SchedulerBinding.instance.platformDispatcher.platformBrightness;
-    _isLight = platformBrightness != Brightness.dark;
+    _isLight = true;
 
     // No bloqueamos el primer frame: boot asincrono + watchdog.
     _startBoot();

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'bitflow_colors.dart';
 import 'gridnote_theme.dart';
 
 @immutable
@@ -134,41 +135,52 @@ class AppTheme {
     final isLight = theme.brightness == Brightness.light;
 
     final bg = theme.scaffoldBackgroundColor;
-    final surface = isLight ? const Color(0xFFFFFFFF) : const Color(0xFF121317);
-    final surfaceMuted =
-        isLight ? const Color(0xFFF4F4F6) : const Color(0xFF111216);
-    final surfaceElevated =
-        isLight ? const Color(0xFFFFFFFF) : const Color(0xFF17181D);
+    final surface = isLight ? BitFlowColors.surface : BitFlowColors.darkSurface;
+    final surfaceMuted = isLight
+        ? BitFlowColors.surfaceMuted
+        : BitFlowColors.darkSurfaceMuted;
+    final surfaceElevated = isLight
+        ? BitFlowColors.surfaceElevated
+        : const Color(0xFF17181D);
 
-    final neutralInk =
-        isLight ? const Color(0xFF111113) : const Color(0xFFF4F4F6);
-    final neutralMuted =
-        isLight ? const Color(0xFF575861) : const Color(0xFFB6B7C0);
-    final border = isLight ? const Color(0xFFE3E4E8) : const Color(0xFF2B2D34);
-    final borderStrong =
-        isLight ? const Color(0xFFD2D4DB) : const Color(0xFF3A3C45);
+    final neutralInk = isLight ? BitFlowColors.ink : const Color(0xFFF4F4F6);
+    final neutralMuted = isLight
+        ? BitFlowColors.textSecondary
+        : const Color(0xFFB6B7C0);
+    final border = isLight ? BitFlowColors.border : const Color(0xFF2B2D34);
+    final borderStrong = isLight
+        ? BitFlowColors.borderStrong
+        : const Color(0xFF3A3C45);
 
-    final accent = neutralInk;
-    final accentMuted = accent.withValues(alpha: isLight ? 0.07 : 0.16);
+    final accent = isLight ? BitFlowColors.teal : BitFlowColors.tealBright;
+    final accentMuted = isLight
+        ? BitFlowColors.tealSoft
+        : accent.withValues(alpha: 0.18);
 
-    final statusBg = accent.withValues(alpha: isLight ? 0.08 : 0.16);
-    final statusFg = neutralInk;
+    final statusBg = accentMuted;
+    final statusFg = accent;
 
-    final warningBg = surfaceMuted;
-    final warningFg = neutralInk;
+    final warningBg = isLight
+        ? const Color(0xFFFFF6E6)
+        : const Color(0xFF2B2113);
+    final warningFg = BitFlowColors.warning;
 
-    final dangerBg =
-        isLight ? const Color(0xFFF5F5F6) : const Color(0xFF191A1F);
-    final dangerFg = neutralInk;
+    final dangerBg = isLight
+        ? const Color(0xFFFEECEC)
+        : const Color(0xFF2A1518);
+    final dangerFg = BitFlowColors.error;
 
-    final successBg =
-        isLight ? const Color(0xFFF3F3F5) : const Color(0xFF1A1B20);
-    final successFg = neutralInk;
+    final successBg = isLight
+        ? const Color(0xFFEAF7EE)
+        : const Color(0xFF10251A);
+    final successFg = BitFlowColors.success;
 
-    final hover = (isLight ? Colors.black : Colors.white)
-        .withValues(alpha: isLight ? 0.035 : 0.07);
-    final pressed = (isLight ? Colors.black : Colors.white)
-        .withValues(alpha: isLight ? 0.09 : 0.15);
+    final hover = (isLight ? Colors.black : Colors.white).withValues(
+      alpha: isLight ? 0.035 : 0.07,
+    );
+    final pressed = (isLight ? Colors.black : Colors.white).withValues(
+      alpha: isLight ? 0.09 : 0.15,
+    );
     final focusRing = accent.withValues(alpha: isLight ? 0.28 : 0.40);
 
     final colors = AppColors(
@@ -199,8 +211,12 @@ class AppTheme {
     final radii = const AppRadii();
     final spacing = const AppSpacing();
 
-    final shadowColor = Colors.black.withValues(alpha: isLight ? 0.10 : 0.48);
-    final softShadow = Colors.black.withValues(alpha: isLight ? 0.05 : 0.34);
+    final shadowColor = BitFlowColors.ink.withValues(
+      alpha: isLight ? 0.10 : 0.48,
+    );
+    final softShadow = BitFlowColors.ink.withValues(
+      alpha: isLight ? 0.05 : 0.34,
+    );
 
     final shadows = AppShadows(
       card: [

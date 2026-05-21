@@ -53,12 +53,18 @@ class _AppButtonState extends State<AppButton> {
     };
 
     final padding = switch (widget.size) {
-      AppButtonSize.sm =>
-        EdgeInsets.symmetric(horizontal: t.spacing.md, vertical: t.spacing.xs),
-      AppButtonSize.md =>
-        EdgeInsets.symmetric(horizontal: t.spacing.lg, vertical: t.spacing.sm),
-      AppButtonSize.lg =>
-        EdgeInsets.symmetric(horizontal: t.spacing.xl, vertical: t.spacing.sm),
+      AppButtonSize.sm => EdgeInsets.symmetric(
+        horizontal: t.spacing.md,
+        vertical: t.spacing.xs,
+      ),
+      AppButtonSize.md => EdgeInsets.symmetric(
+        horizontal: t.spacing.lg,
+        vertical: t.spacing.sm,
+      ),
+      AppButtonSize.lg => EdgeInsets.symmetric(
+        horizontal: t.spacing.xl,
+        vertical: t.spacing.sm,
+      ),
     };
 
     final fontSize = switch (widget.size) {
@@ -129,12 +135,7 @@ class _AppButtonState extends State<AppButton> {
           Icon(widget.icon, size: fontSize + 6),
         if (widget.icon != null || widget.loading)
           SizedBox(width: t.spacing.sm),
-        Flexible(
-          child: Text(
-            widget.label,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
+        Flexible(child: Text(widget.label, overflow: TextOverflow.ellipsis)),
       ],
     );
 
@@ -147,8 +148,9 @@ class _AppButtonState extends State<AppButton> {
     final wrapped = widget.fullWidth
         ? SizedBox(width: double.infinity, child: button)
         : button;
-    final shadowColor =
-        t.colors.textPrimary.withValues(alpha: t.colors.isLight ? 0.10 : 0.30);
+    final shadowColor = t.colors.textPrimary.withValues(
+      alpha: t.colors.isLight ? 0.10 : 0.30,
+    );
     final interactive = MouseRegion(
       onEnter: disabled ? null : (_) => _setHovered(true),
       onExit: (_) => _setHovered(false),
@@ -160,7 +162,8 @@ class _AppButtonState extends State<AppButton> {
           duration: const Duration(milliseconds: 120),
           curve: Curves.easeOut,
           decoration: BoxDecoration(
-            boxShadow: _hovered &&
+            boxShadow:
+                _hovered &&
                     !disabled &&
                     widget.variant == AppButtonVariant.primary
                 ? [
@@ -206,7 +209,7 @@ class _AppButtonState extends State<AppButton> {
       case AppButtonVariant.destructive:
         return _ResolvedButtonColors(
           bg: t.colors.dangerFg,
-          fg: t.colors.isLight ? Colors.white : const Color(0xFF0D0D0F),
+          fg: Colors.white,
           border: t.colors.dangerFg,
         );
     }

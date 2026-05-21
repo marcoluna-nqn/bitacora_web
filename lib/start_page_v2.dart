@@ -76,10 +76,7 @@ class _StartPageV2State extends State<StartPageV2> {
     setState(() => _onboardingDone = true);
   }
 
-  void debugShowBusyOverlay({
-    required String message,
-    bool canCancel = false,
-  }) {
+  void debugShowBusyOverlay({required String message, bool canCancel = false}) {
     setState(() {
       _busy = true;
       _busyMessage = message;
@@ -133,8 +130,9 @@ class _StartPageV2State extends State<StartPageV2> {
             ListTile(
               leading: const Icon(Icons.science_outlined),
               title: const Text('Plantilla técnica'),
-              subtitle:
-                  const Text('Relevamiento con columnas y evidencias listas'),
+              subtitle: const Text(
+                'Relevamiento con columnas y evidencias listas',
+              ),
               onTap: () => Navigator.of(context).pop('demo'),
             ),
           ],
@@ -252,9 +250,9 @@ class _StartPageV2State extends State<StartPageV2> {
   }
 
   Future<void> _openStaticPage(Widget page) async {
-    await Navigator.of(context).push(
-      CupertinoPageRoute<void>(builder: (_) => page),
-    );
+    await Navigator.of(
+      context,
+    ).push(CupertinoPageRoute<void>(builder: (_) => page));
   }
 
   Future<void> _openLicenses() async {
@@ -324,7 +322,8 @@ class _StartPageV2State extends State<StartPageV2> {
 
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    final isModifierPressed = HardwareKeyboard.instance.isControlPressed ||
+    final isModifierPressed =
+        HardwareKeyboard.instance.isControlPressed ||
         HardwareKeyboard.instance.isMetaPressed;
     if (isModifierPressed && event.logicalKey == LogicalKeyboardKey.keyK) {
       _openQuickSwitcher();
@@ -411,8 +410,10 @@ class _StartPageV2State extends State<StartPageV2> {
                             alignment: Alignment.centerLeft,
                             child: TextButton.icon(
                               onPressed: _showCreateSheetChoices,
-                              icon: const Icon(Icons.science_outlined,
-                                  size: 18),
+                              icon: const Icon(
+                                Icons.science_outlined,
+                                size: 18,
+                              ),
                               label: const Text('Crear hoja'),
                             ),
                           ),
@@ -493,15 +494,21 @@ class _BrandRow extends StatelessWidget {
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: t.colors.surfaceMuted,
+            color: t.colors.accent,
             borderRadius: BorderRadius.circular(t.radii.sm),
-            border: Border.all(color: t.colors.border),
+            boxShadow: [
+              BoxShadow(
+                color: t.colors.accent.withValues(alpha: 0.22),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           alignment: Alignment.center,
           child: Icon(
             Icons.grid_view_rounded,
             size: 18,
-            color: t.colors.textPrimary,
+            color: t.colors.isLight ? Colors.white : const Color(0xFF0E1726),
           ),
         ),
         const SizedBox(width: 10),
@@ -516,9 +523,7 @@ class _BrandRow extends StatelessWidget {
         ),
         IconButton(
           onPressed: onToggleTheme,
-          icon: Icon(
-            isLight ? CupertinoIcons.moon : CupertinoIcons.sun_max,
-          ),
+          icon: Icon(isLight ? CupertinoIcons.moon : CupertinoIcons.sun_max),
           color: t.colors.textPrimary,
           tooltip: isLight ? 'Modo oscuro' : 'Modo claro',
         ),
@@ -543,20 +548,17 @@ class _Hero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final titleStyle =
-        (wide ? t.text.displaySmall : t.text.headlineMedium)?.copyWith(
-      color: t.colors.textPrimary,
-      fontWeight: FontWeight.w900,
-      letterSpacing: -0.6,
-      height: 1.05,
-    );
+    final titleStyle = (wide ? t.text.displaySmall : t.text.headlineMedium)
+        ?.copyWith(
+          color: t.colors.textPrimary,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -0.6,
+          height: 1.05,
+        );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Planillas técnicas con\nevidencias en campo.',
-          style: titleStyle,
-        ),
+        Text('Planillas técnicas con\nevidencias en campo.', style: titleStyle),
         const SizedBox(height: 12),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 680),
@@ -669,6 +671,7 @@ class _ActionTile extends StatelessWidget {
       child: AppCard(
         onTap: onTap,
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+        color: accent ? t.colors.accent : null,
         borderColor: accent ? t.colors.borderStrong : t.colors.border,
         shadows: accent ? t.shadows.card : t.shadows.soft,
         child: Row(
@@ -678,10 +681,14 @@ class _ActionTile extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: accent ? t.colors.accent : t.colors.surfaceMuted,
+                color: accent
+                    ? Colors.white.withValues(alpha: 0.16)
+                    : t.colors.surfaceMuted,
                 borderRadius: BorderRadius.circular(t.radii.md),
                 border: Border.all(
-                  color: accent ? t.colors.accent : t.colors.border,
+                  color: accent
+                      ? Colors.white.withValues(alpha: 0.22)
+                      : t.colors.border,
                 ),
               ),
               alignment: Alignment.center,
@@ -690,8 +697,8 @@ class _ActionTile extends StatelessWidget {
                 size: 20,
                 color: accent
                     ? (t.colors.isLight
-                        ? Colors.white
-                        : const Color(0xFF0D0D0F))
+                          ? Colors.white
+                          : const Color(0xFF0D0D0F))
                     : t.colors.textPrimary,
               ),
             ),
@@ -707,6 +714,7 @@ class _ActionTile extends StatelessWidget {
                     style: t.text.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.1,
+                      color: accent ? Colors.white : t.colors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -715,7 +723,9 @@ class _ActionTile extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: t.text.bodySmall?.copyWith(
-                      color: t.colors.textSecondary,
+                      color: accent
+                          ? Colors.white.withValues(alpha: 0.82)
+                          : t.colors.textSecondary,
                       height: 1.3,
                       fontWeight: FontWeight.w500,
                     ),
@@ -727,7 +737,9 @@ class _ActionTile extends StatelessWidget {
             Icon(
               Icons.chevron_right_rounded,
               size: 20,
-              color: t.colors.textSecondary,
+              color: accent
+                  ? Colors.white.withValues(alpha: 0.86)
+                  : t.colors.textSecondary,
             ),
           ],
         ),
@@ -749,11 +761,7 @@ class _MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon),
-      title: Text(title),
-      onTap: onTap,
-    );
+    return ListTile(leading: Icon(icon), title: Text(title), onTap: onTap);
   }
 }
 
@@ -847,14 +855,8 @@ class _OnboardingCard extends StatelessWidget {
                 icon: const Icon(Icons.add_rounded),
                 label: const Text('Crear hoja'),
               ),
-              OutlinedButton(
-                onPressed: onNext,
-                child: const Text('Siguiente'),
-              ),
-              TextButton(
-                onPressed: onDismiss,
-                child: const Text('Ahora no'),
-              ),
+              OutlinedButton(onPressed: onNext, child: const Text('Siguiente')),
+              TextButton(onPressed: onDismiss, child: const Text('Ahora no')),
             ],
           ),
         ],
@@ -894,10 +896,7 @@ class _RecentSheetsPanel extends StatelessWidget {
       child: Column(
         children: [
           for (var i = 0; i < sheets.take(4).length; i++) ...[
-            _RecentRow(
-              meta: sheets[i],
-              onTap: () => onOpen(sheets[i].id),
-            ),
+            _RecentRow(meta: sheets[i], onTap: () => onOpen(sheets[i].id)),
             if (i < sheets.take(4).length - 1)
               Divider(height: 1, color: t.colors.border),
           ],

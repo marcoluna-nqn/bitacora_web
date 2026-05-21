@@ -35,11 +35,8 @@ class AppTableColumn<T> {
       alignment: alignment,
       headerAlignment: headerAlignment,
       flex: flex,
-      cellBuilder: (context, row) => Text(
-        value(row),
-        maxLines: maxLines,
-        overflow: TextOverflow.ellipsis,
-      ),
+      cellBuilder: (context, row) =>
+          Text(value(row), maxLines: maxLines, overflow: TextOverflow.ellipsis),
     );
   }
 }
@@ -110,8 +107,10 @@ class AppTable<T> extends StatelessWidget {
             SizedBox(
               width: column.minWidth,
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 child: Align(
                   alignment: column.headerAlignment,
                   child: Text(column.label, style: headerTextStyle),
@@ -126,9 +125,7 @@ class AppTable<T> extends StatelessWidget {
       return DecoratedBox(
         decoration: BoxDecoration(
           color: index.isEven ? t.colors.surface : t.colors.surfaceMuted,
-          border: Border(
-            top: BorderSide(color: t.colors.border),
-          ),
+          border: Border(top: BorderSide(color: t.colors.border)),
         ),
         child: DefaultTextStyle(
           style: cellTextStyle ?? const TextStyle(),
@@ -140,7 +137,9 @@ class AppTable<T> extends StatelessWidget {
                   width: column.minWidth,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 11),
+                      horizontal: 12,
+                      vertical: 11,
+                    ),
                     child: Align(
                       alignment: column.alignment,
                       child: column.cellBuilder(context, row),
@@ -162,10 +161,8 @@ class AppTable<T> extends StatelessWidget {
           children: [
             DecoratedBox(
               decoration: BoxDecoration(
-                color: t.colors.surfaceElevated,
-                border: Border(
-                  bottom: BorderSide(color: t.colors.border),
-                ),
+                color: t.colors.accentMuted,
+                border: Border(bottom: BorderSide(color: t.colors.border)),
               ),
               child: buildHeader(),
             ),
@@ -178,9 +175,7 @@ class AppTable<T> extends StatelessWidget {
     if (maxHeight != null) {
       table = SizedBox(
         height: maxHeight,
-        child: SingleChildScrollView(
-          child: table,
-        ),
+        child: SingleChildScrollView(child: table),
       );
     }
 
