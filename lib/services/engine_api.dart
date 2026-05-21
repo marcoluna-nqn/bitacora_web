@@ -8,8 +8,8 @@ import 'engine_config.dart';
 import 'save_bytes.dart';
 
 /// Client for BitFlow / Cathodic / XLSX Engine (FastAPI).
-/// - Web: uses HTTPS tunnel by default (avoid CORS/ATS issues).
-/// - Non-web: tries LAN, falls back to tunnel.
+/// - Web: uses explicit config only (?engine, ENGINE_BASE_URL, prefs, version.json).
+/// - Non-web: tries LAN, then an explicit tunnel if configured.
 /// - No dart:io (web compatible).
 class EngineApi {
   EngineApi({
@@ -39,8 +39,7 @@ class EngineApi {
   Completer<Uri>? _resolving;
 
   /// Resolves and caches the base URL to use.
-  /// - Web: tunnel (unless manual/query override).
-  /// - Non-web: LAN with short timeout, else tunnel.
+  /// An empty Uri means the optional engine is not configured.
   Future<Uri> resolveBaseUri() async {
     final cached = _resolvedBase;
     if (cached != null) return cached;
@@ -70,31 +69,55 @@ class EngineApi {
           completer.complete(u);
           return u;
         }
-        final u = Uri.parse(_normalizeBase(tunnelBase));
-        _resolvedBase = u;
-        await _config.setLastResolved(u.toString());
-        completer.complete(u);
-        return u;
+        final explicitTunnel = _normalizeBase(tunnelBase);
+        if (explicitTunnel.isNotEmpty &&
+            EngineConfig.isValidBaseUrl(explicitTunnel)) {
+          final u = Uri.parse(explicitTunnel);
+          _resolvedBase = u;
+          await _config.setLastResolved(u.toString());
+          completer.complete(u);
+          return u;
+        }
+        final empty = Uri();
+        _resolvedBase = empty;
+        await _config.setLastResolved('');
+        completer.complete(empty);
+        return empty;
       }
 
       final lan = Uri.parse(_normalizeBase(lanBase));
-      final tunnel = Uri.parse(_normalizeBase(tunnelBase));
-
       final okLan = await _probe(lan);
-      final chosen = okLan ? lan : tunnel;
-
-      _resolvedBase = chosen;
-      await _config.setLastResolved(chosen.toString());
-      completer.complete(chosen);
-      return chosen;
-    } catch (e, st) {
-      final fallback = Uri.parse(_normalizeBase(tunnelBase));
-      _resolvedBase = fallback;
-      if (!completer.isCompleted) completer.complete(fallback);
-      if (kDebugMode) {
-        debugPrint('EngineApi.resolveBaseUri fallback: $e\n$st');
+      if (okLan) {
+        _resolvedBase = lan;
+        await _config.setLastResolved(lan.toString());
+        completer.complete(lan);
+        return lan;
       }
-      return fallback;
+
+      final explicitTunnel = _normalizeBase(tunnelBase);
+      if (explicitTunnel.isNotEmpty &&
+          EngineConfig.isValidBaseUrl(explicitTunnel)) {
+        final tunnel = Uri.parse(explicitTunnel);
+        _resolvedBase = tunnel;
+        await _config.setLastResolved(tunnel.toString());
+        completer.complete(tunnel);
+        return tunnel;
+      }
+
+      final empty = Uri();
+      _resolvedBase = empty;
+      await _config.setLastResolved('');
+      completer.complete(empty);
+      return empty;
+    } catch (e, st) {
+      final empty = Uri();
+      _resolvedBase = empty;
+      await _config.setLastResolved('');
+      if (!completer.isCompleted) completer.complete(empty);
+      if (kDebugMode) {
+        debugPrint('EngineApi.resolveBaseUri unavailable: $e\n$st');
+      }
+      return empty;
     } finally {
       _resolving = null;
     }
@@ -515,6 +538,9 @@ class EngineApi {
 
   Future<Uri> _buildUri(String path, {bool cacheBust = false}) async {
     final base = await resolveBaseUri();
+    if (base.host.isEmpty || base.scheme.isEmpty) {
+      throw const EngineApiDataException('Engine no configurado.');
+    }
     final resolvedPath = _joinPath(base.path, path);
     if (!cacheBust) {
       return base.replace(path: resolvedPath);
@@ -534,6 +560,9 @@ class EngineApi {
     }
     if (parsed.hasScheme) return parsed;
     final base = await resolveBaseUri();
+    if (base.host.isEmpty || base.scheme.isEmpty) {
+      throw const EngineApiDataException('Engine no configurado.');
+    }
     return base.resolve(downloadUrl);
   }
 

@@ -247,9 +247,12 @@ class _AppState extends State<App> {
     Object? storeError;
 
     try {
+      final firebaseTimeout = RuntimeFlags.demoMode
+          ? const Duration(seconds: 3)
+          : const Duration(seconds: 10);
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(firebaseTimeout);
       firebaseOk = true;
     } catch (e) {
       firebaseOk = false;

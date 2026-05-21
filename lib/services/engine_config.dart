@@ -3,8 +3,8 @@
 // EngineConfig: runtime settings for BitFlow Engine base URL.
 // - Stores mode (auto/manual), manual_base_url, last_resolved_base_url.
 // - Web: supports ?engine=https://... override (highest priority).
-// - Fallback: --dart-define=ENGINE_URL=... when no prefs.
-// - Defaults: LAN + Tunnel provided here.
+// - Fallback: --dart-define=ENGINE_BASE_URL=... when no prefs.
+// - Defaults: local/LAN only. Public tunnels must be explicit.
 //
 // No dart:io. Web/Mobile/Desktop compatible.
 
@@ -21,8 +21,7 @@ class EngineConfig {
 
   static const String webQueryParam = 'engine';
 
-  static const String defaultTunnelBaseUrl =
-      'https://dock-stranger-crossing-breeding.trycloudflare.com';
+  static const String defaultTunnelBaseUrl = '';
   static const String defaultLanBaseUrl = 'http://192.168.1.37:8001';
 
   static const String _kModeKey = 'engine_mode';

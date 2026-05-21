@@ -4,11 +4,9 @@ import 'package:http/http.dart' as http;
 /// URL por defecto cuando se usa la notebook/PC en LAN.
 const String _defaultLanUrl = 'http://192.168.1.45:8000';
 
-/// URL por defecto para el túnel Cloudflare (quick tunnel actual).
-/// Cada vez que generes un túnel nuevo, podés cambiar esta constante
-/// o bien usar --dart-define=PY_ENGINE_URL=...
-const String _defaultTunnelUrl =
-    'https://dock-stranger-crossing-breeding.trycloudflare.com';
+/// URL por defecto para un tunel publico.
+/// Vacio a proposito: el demo normal no debe depender de un tunel temporal.
+const String _defaultTunnelUrl = '';
 
 /// Flag de build para decidir si se usa túnel por defecto o LAN.
 ///
@@ -301,8 +299,8 @@ class BitflowEngineClient {
 ///  1) --dart-define=PY_ENGINE_URL=…          (URL completa, LAN o túnel)
 ///  2) --dart-define=BITFLOW_ENGINE_URL=…     (compat viejo)
 ///  3) Por defecto:
-///       - Si USE_TUNNEL=true  → _defaultTunnelUrl
-///       - Si USE_TUNNEL=false → _defaultLanUrl
+///       - Si USE_TUNNEL=true y hay tunel explicito -> _defaultTunnelUrl
+///       - Caso contrario -> _defaultLanUrl
 BitflowEngineClient createDefaultBitflowEngineClient() {
   const pyUrl = String.fromEnvironment('PY_ENGINE_URL');
   const legacyUrl = String.fromEnvironment('BITFLOW_ENGINE_URL');
@@ -311,7 +309,9 @@ BitflowEngineClient createDefaultBitflowEngineClient() {
       ? pyUrl
       : (legacyUrl.isNotEmpty
           ? legacyUrl
-          : (_useTunnelByDefault ? _defaultTunnelUrl : _defaultLanUrl));
+          : (_useTunnelByDefault && _defaultTunnelUrl.isNotEmpty
+              ? _defaultTunnelUrl
+              : _defaultLanUrl));
 
   return BitflowEngineClient(baseUrl: baseUrl);
 }
