@@ -1,0 +1,90 @@
+import 'package:bitacora_web/features/editor/editor_screen.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  VoidCallback configureDesktopHarness() {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    final previousOnError = FlutterError.onError;
+    FlutterError.onError = (FlutterErrorDetails details) {
+      final isKnownGridOverflow = details.library == 'rendering library' &&
+          details.exceptionAsString().contains('A RenderFlex overflowed');
+      if (isKnownGridOverflow) return;
+      previousOnError?.call(details);
+    };
+    return () {
+      debugDefaultTargetPlatformOverride = null;
+      FlutterError.onError = previousOnError;
+    };
+  }
+
+  Future<dynamic> pumpDesktopEditor(WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    tester.view.physicalSize = const Size(1440, 2200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: EditorScreen(
+          sheetId: 'live-cell-editing-feedback',
+          initialHeaders: <String>['Texto', 'Fotos'],
+          initialRows: <List<String>>[
+            <String>['seed', ''],
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    return tester.state(find.byType(EditorScreen)) as dynamic;
+  }
+
+  Future<Finder> openCellEditor(WidgetTester tester, String visibleText) async {
+    await tester.tap(find.text(visibleText).first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 160));
+
+    final editor = find.byKey(const ValueKey('desktop-cell-editor-field'));
+    expect(editor, findsOneWidget);
+    return editor;
+  }
+
+  testWidgets('desktop cell editor shows draft text while typing',
+      (tester) async {
+    final restoreHarness = configureDesktopHarness();
+    try {
+      final state = await pumpDesktopEditor(tester);
+
+      final editor = await openCellEditor(tester, 'seed');
+
+      await tester.enterText(editor, 'a');
+      expect(state.debugDisplayedCellText(0, 0), 'a');
+
+      await tester.enterText(editor, 'ab');
+      expect(state.debugDisplayedCellText(0, 0), 'ab');
+
+      await tester.enterText(editor, 'abc');
+      expect(state.debugDisplayedCellText(0, 0), 'abc');
+
+      await tester.tapAt(const Offset(8, 8));
+      await tester.pumpAndSettle();
+      expect(state.debugCellText(0, 0), 'abc');
+
+      final editorAfterCommit = await openCellEditor(tester, 'abc');
+
+      await tester.enterText(editorAfterCommit, '');
+      expect(state.debugDisplayedCellText(0, 0), '');
+
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(state.debugCellText(0, 0), '');
+    } finally {
+      restoreHarness();
+    }
+  });
+}

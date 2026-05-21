@@ -350,7 +350,6 @@ class _EditorScreenState extends State<EditorScreen>
   static const Duration _saveThrottle = Duration(milliseconds: 1500);
   static const Duration _autosavePulse = Duration(seconds: 15);
   static const Duration _validationDebounce = Duration(milliseconds: 260);
-  static const Duration _cellDraftSyncDebounce = Duration(milliseconds: 120);
   static const Duration _toastCoalesceWindow = Duration(milliseconds: 900);
   static const Duration _slowValidationThreshold = Duration(milliseconds: 12);
   static const String _kPhotoReadErrorMsg =
@@ -497,7 +496,6 @@ class _EditorScreenState extends State<EditorScreen>
   final Set<String> _storageWarnedReasons = <String>{};
   VoidCallback? _cellDraftListener;
   VoidCallback? _mobileDraftListener;
-  Timer? _cellDraftSyncT;
 
   // Blink visual
   final ValueNotifier<_CellRef?> _blinkCell = ValueNotifier<_CellRef?>(null);
@@ -891,7 +889,6 @@ class _EditorScreenState extends State<EditorScreen>
     _validationDebounceT?.cancel();
     _nameDebounceT?.cancel();
     _inlineSearchDebounceT?.cancel();
-    _cellDraftSyncT?.cancel();
     _recentValuesSaveT?.cancel();
     _historyPersistT?.cancel();
     _blinkT?.cancel();
@@ -5314,15 +5311,11 @@ class _EditorScreenState extends State<EditorScreen>
 
   void _attachCellDraftListener() {
     if (_cellDraftListener != null) return;
-    _cellDraftListener = () {
-      _cellDraftSyncT?.cancel();
-      _cellDraftSyncT = Timer(_cellDraftSyncDebounce, _syncActiveDrafts);
-    };
+    _cellDraftListener = _syncActiveDrafts;
     _cellEC.addListener(_cellDraftListener!);
   }
 
   void _detachCellDraftListener() {
-    _cellDraftSyncT?.cancel();
     final listener = _cellDraftListener;
     if (listener == null) return;
     _cellEC.removeListener(listener);
@@ -13223,8 +13216,8 @@ class _EditorScreenState extends State<EditorScreen>
     required double width,
     required ValueChanged<String> onCommit,
   }) {
-    _removeCellEditor();
-
+    _cellEditorEntry?.remove();
+    _cellEditorEntry = null;
     _detachCellDraftListener();
     _cellEC.text = initial;
     _cellEC.selection = TextSelection(
@@ -13372,6 +13365,9 @@ class _EditorScreenState extends State<EditorScreen>
                               children: [
                                 Expanded(
                                   child: TextField(
+                                    key: const ValueKey(
+                                      'desktop-cell-editor-field',
+                                    ),
                                     controller: _cellEC,
                                     focusNode: _cellFocus,
                                     autofocus: true,
