@@ -1638,14 +1638,17 @@ class _SheetPalette {
   factory _SheetPalette.fromApp(AppThemeData t, {required double hairline}) {
     final c = t.colors;
     final card = c.surfaceElevated;
-    final monoInk = c.textPrimary;
+    final selectionTone = c.isLight ? c.accent : c.textPrimary;
     final gridBg = c.surfaceElevated;
     final headerBg = c.surfaceMuted;
     final zebraA = c.surface;
     final zebraB = c.surfaceMuted.withValues(alpha: c.isLight ? 0.34 : 0.16);
-    final selectionFill = monoInk.withValues(alpha: c.isLight ? 0.08 : 0.14);
-    final selectionBorder = monoInk.withValues(alpha: c.isLight ? 0.38 : 0.52);
-    final focusRing = monoInk.withValues(alpha: c.isLight ? 0.42 : 0.62);
+    final selectionFill = c.isLight
+        ? c.accentMuted.withValues(alpha: 0.88)
+        : selectionTone.withValues(alpha: 0.14);
+    final selectionBorder =
+        selectionTone.withValues(alpha: c.isLight ? 0.48 : 0.52);
+    final focusRing = selectionTone.withValues(alpha: c.isLight ? 0.38 : 0.62);
     final chipBg = c.surfaceMuted;
     final chipBorder = c.borderStrong;
     final chipText = c.textPrimary;
@@ -1680,7 +1683,7 @@ class _SheetPalette {
       editorBg: c.surfaceElevated,
       mobileInputBg:
           c.surfaceElevated.withValues(alpha: c.isLight ? 0.96 : 0.72),
-      accent: monoInk,
+      accent: selectionTone,
       statusBg: c.surfaceMuted,
       statusFg: c.textPrimary,
       hintBg: c.surfaceMuted,
