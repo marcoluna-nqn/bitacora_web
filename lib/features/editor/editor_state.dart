@@ -16235,7 +16235,12 @@ class _EditorScreenState extends State<EditorScreen>
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(color: pal.border, width: pal.hairline),
                 ),
-                child: Column(
+                // Material ancestor for the Radio/SwitchListTile children:
+                // Flutter 3.44 asserts on ListTile inside a DecoratedBox with
+                // a background color. Transparency keeps the sheet identical.
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -16375,6 +16380,7 @@ class _EditorScreenState extends State<EditorScreen>
                       ],
                     ),
                   ],
+                  ),
                 ),
               ),
             );

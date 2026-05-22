@@ -61,7 +61,15 @@ class _AppCardState extends State<AppCard> {
             boxShadow: widget.shadows ??
                 (_hovered && interactive ? t.shadows.card : t.shadows.soft),
           ),
-          child: widget.child,
+          // Provide a Material ancestor *inside* the decorated box so any
+          // ListTile in the child paints its background/ink on a Material
+          // instead of being hidden by this box's background color. Flutter
+          // 3.44 asserts on ListTile-in-DecoratedBox; transparency keeps the
+          // card visually identical.
+          child: Material(
+            type: MaterialType.transparency,
+            child: widget.child,
+          ),
         ),
       ),
     );
