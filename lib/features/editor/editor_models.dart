@@ -1640,7 +1640,9 @@ class _SheetPalette {
     final card = c.surfaceElevated;
     final selectionTone = c.isLight ? c.accent : c.textPrimary;
     final gridBg = c.surfaceElevated;
-    final headerBg = c.surfaceMuted;
+    final headerBg = c.isLight
+        ? Color.lerp(c.surfaceMuted, c.accentMuted, 0.32)!
+        : c.surfaceMuted;
     final zebraA = c.surface;
     final zebraB = c.surfaceMuted.withValues(alpha: c.isLight ? 0.34 : 0.16);
     final selectionFill = c.isLight

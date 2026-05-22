@@ -1249,14 +1249,14 @@ class _PillButtonState extends State<_PillButton> {
     final disabled = widget.onTap == null;
 
     final baseBg =
-        widget.filled ? widget.palette.cellText : widget.palette.pillBtnBg;
+        widget.filled ? widget.palette.accent : widget.palette.pillBtnBg;
     final bg = _pressed
         ? baseBg.withValues(alpha: widget.filled ? 0.85 : 0.72)
         : (_hovered
             ? baseBg.withValues(alpha: widget.filled ? 0.94 : 0.9)
             : baseBg);
 
-    final fg = widget.filled ? widget.palette.gridBg : widget.palette.fg;
+    final fg = widget.filled ? Colors.white : widget.palette.fg;
 
     final button = Opacity(
       opacity: disabled ? 0.45 : 1.0,
