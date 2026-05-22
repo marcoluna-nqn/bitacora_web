@@ -158,7 +158,10 @@ class GridnoteTheme {
     const pillShape = StadiumBorder();
 
     // Transiciones tipo iOS en todas las plataformas: se siente “premium” rápido.
-    const pageTransitions = PageTransitionsTheme(
+    // `final` (no `const`): desde Flutter 3.44 el constructor de
+    // CupertinoPageTransitionsBuilder dejó de ser `const`, por lo que el mapa
+    // ya no puede declararse como literal constante.
+    final pageTransitions = PageTransitionsTheme(
       builders: <TargetPlatform, PageTransitionsBuilder>{
         TargetPlatform.android: CupertinoPageTransitionsBuilder(),
         TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
