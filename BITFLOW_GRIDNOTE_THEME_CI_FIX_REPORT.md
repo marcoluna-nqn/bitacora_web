@@ -7,57 +7,55 @@ Rama: `fix/gridnote-theme-flutter-344` (desde `feature/unified-luna-systems-desi
 
 ## Problema
 
-El check `verify` de CI estaba en rojo por **13 errores del analizador** en
-`lib/theme/gridnote_theme.dart` (líneas 163–168):
+El check `verify` de CI estaba en rojo por errores del analizador en
+`lib/theme/gridnote_theme.dart`, en el mapa `pageTransitions` que usa
+`CupertinoPageTransitionsBuilder`.
 
-- `invalid_constant`
-- `undefined_method` — "The method 'CupertinoPageTransitionsBuilder' isn't defined..."
-- `non_constant_map_value` — "The values in a const map literal must be constant"
-
-Preexistentes en la rama base (vienen del commit `868f660` "Apply Luna UI visual
-redesign"); **no** los causó el PR #53.
+Preexistente en la rama base (viene del commit `868f660` "Apply Luna UI visual
+redesign"); **no** lo causó el PR #53.
 
 ## Causa raíz
 
 CI corre **Flutter 3.44.0**; el entorno local corre **Flutter 3.35.6**.
 
-Desde Flutter 3.44, el constructor de `CupertinoPageTransitionsBuilder` **dejó de ser
-`const`**. El archivo declaraba el mapa de transiciones como literal constante:
+En **Flutter 3.44**, `CupertinoPageTransitionsBuilder` se **movió de
+`package:flutter/material.dart` a `package:flutter/cupertino.dart`**
+(breaking change "Page transition builders reorganization", PR flutter/flutter#179776).
 
-```dart
-const pageTransitions = PageTransitionsTheme(
-  builders: <TargetPlatform, PageTransitionsBuilder>{
-    TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-    ...
-  },
-);
-```
-
-Al no ser `const` el constructor, el literal `const` ya no es válido en 3.44 → 13
-errores (uno `invalid_constant` + 2 por cada una de las 6 entradas del mapa). En 3.35.6
-el constructor aún era `const`, por eso el análisis local no lo detectaba.
+El archivo sólo importaba `material.dart`, por lo que en 3.44 el símbolo quedó
+**sin resolver**. El analizador lo reportó como `undefined_method` y, en
+consecuencia, el mapa `const` también fallaba (`non_constant_map_value`,
+`invalid_constant`). En Flutter 3.35.6 el símbolo seguía en `material.dart`, por
+eso el análisis local no detectaba el problema.
 
 ## Fix aplicado
 
-Cambio mínimo (1 palabra) en `lib/theme/gridnote_theme.dart`:
+Cambios mínimos, sólo en `lib/theme/gridnote_theme.dart`:
 
-```diff
-- const pageTransitions = PageTransitionsTheme(
-+ final pageTransitions = PageTransitionsTheme(
-    builders: <TargetPlatform, PageTransitionsBuilder>{
-```
+1. **Import de `cupertino.dart`** para obtener `CupertinoPageTransitionsBuilder`
+   en Flutter ≥ 3.44:
 
-`final` en lugar de `const`: el mapa pasa a ser no-constante, por lo que invocar el
-constructor (sea `const` o no) es válido. Es compatible **hacia atrás** (funciona en
-3.35.6 y en 3.44) y **hacia adelante**.
+   ```diff
+   + import 'package:flutter/cupertino.dart'; // ignore: unnecessary_import
+     import 'package:flutter/material.dart';
+   ```
 
-`pageTransitions` sólo se usa en `pageTransitionsTheme: pageTransitions` dentro de
-`final material = ThemeData(...)` — un contexto no-constante — así que pasar de `const` a
-`final` no afecta a ningún otro uso.
+   En Flutter < 3.44 el símbolo aún está en `material.dart`, por lo que ahí el
+   import se ve como redundante; se añade `// ignore: unnecessary_import` para
+   que el archivo analice limpio en **ambas versiones**. (`unnecessary_ignore`
+   no está habilitado en `analysis_options.yaml`, así que el comentario es
+   inocuo en 3.44 donde el import sí es necesario.)
 
-Sin cambios en comportamiento de la app: las transiciones siguen siendo las mismas.
+2. **`const pageTransitions` → `final pageTransitions`**: evita depender de que
+   el constructor de `CupertinoPageTransitionsBuilder` sea `const` entre
+   versiones de Flutter. `pageTransitions` sólo se usa dentro de
+   `final material = ThemeData(...)` (contexto no-constante), así que el cambio
+   no afecta a ningún otro uso.
 
-## Validación local
+Sin cambios de comportamiento: las transiciones de página siguen siendo las
+mismas (estilo iOS en todas las plataformas).
+
+## Validación local (Flutter 3.35.6)
 
 | Paso | Resultado |
 |---|---|
@@ -68,14 +66,13 @@ Sin cambios en comportamiento de la app: las transiciones siguen siendo las mism
 | `flutter test` | ✅ All tests passed (173) |
 | `flutter build web --release --no-web-resources-cdn --pwa-strategy=none --base-href /bitacora_web/` | ✅ ✓ Built build\web |
 
-Nota: el entorno local es Flutter 3.35.6, donde el archivo ya analizaba limpio antes y
-después del cambio. La verificación definitiva en Flutter 3.44 es el propio check `verify`
-de CI sobre el PR de esta rama; el fix está construido para ser correcto en ambas
-versiones.
+Nota: el entorno local es Flutter 3.35.6. La verificación definitiva en Flutter
+3.44 es el check `verify` de CI sobre el PR de esta rama (PR #54). El fix está
+construido para ser correcto y analizar limpio en **ambas** versiones.
 
 ## Alcance / cumplimiento de reglas
 
-- ✅ Sólo se modificó `lib/theme/gridnote_theme.dart` (1 línea efectiva).
+- ✅ Sólo se modificó `lib/theme/gridnote_theme.dart`.
 - ✅ No se tocaron los cambios de UX del editor.
 - ✅ No se tocó la DataGrid, exports, servicios, modelos ni persistencia.
 - ✅ No se tocaron los archivos *dirty* ajenos (`editor_state.dart`,

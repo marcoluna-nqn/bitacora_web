@@ -1,4 +1,9 @@
 // lib/theme/gridnote_theme.dart
+// Flutter 3.44 movió CupertinoPageTransitionsBuilder de material.dart a
+// cupertino.dart. En Flutter < 3.44 el símbolo sigue en material.dart, por lo
+// que ahí este import se ve como redundante; se ignora para que el archivo
+// compile y analice limpio en ambas versiones.
+import 'package:flutter/cupertino.dart'; // ignore: unnecessary_import
 import 'package:flutter/material.dart';
 
 import 'bitflow_colors.dart';
@@ -158,9 +163,9 @@ class GridnoteTheme {
     const pillShape = StadiumBorder();
 
     // Transiciones tipo iOS en todas las plataformas: se siente “premium” rápido.
-    // `final` (no `const`): desde Flutter 3.44 el constructor de
-    // CupertinoPageTransitionsBuilder dejó de ser `const`, por lo que el mapa
-    // ya no puede declararse como literal constante.
+    // Flutter 3.44 movió CupertinoPageTransitionsBuilder de material.dart a
+    // cupertino.dart (ver import arriba). Se declara `final` (no `const`) para
+    // no depender de que el constructor sea `const` entre versiones de Flutter.
     final pageTransitions = PageTransitionsTheme(
       builders: <TargetPlatform, PageTransitionsBuilder>{
         TargetPlatform.android: CupertinoPageTransitionsBuilder(),
