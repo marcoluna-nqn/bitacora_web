@@ -13240,6 +13240,9 @@ class _EditorScreenState extends State<EditorScreen>
           ).take(10).toList(growable: false);
     final overlay = Overlay.of(context, rootOverlay: true);
     var committed = false;
+    // Identifica el puntero que cae dentro del editor para que la barrera no
+    // confirme cuando el usuario interactua con el propio editor.
+    int? editorPointerDownId;
 
     void commitAndDismiss() {
       if (committed) return;
@@ -13264,9 +13267,17 @@ class _EditorScreenState extends State<EditorScreen>
         return Stack(
           children: [
             Positioned.fill(
-              child: GestureDetector(
+              // Barrera de cierre. Usa Listener (no GestureDetector) para no
+              // entrar al gesture arena: confirma al bajar el puntero y deja
+              // pasar el clic al InkWell de la celda destino, de modo que
+              // cambiar de celda durante la edicion toma un solo clic.
+              child: Listener(
                 behavior: HitTestBehavior.translucent,
-                onTap: commitAndDismiss,
+                onPointerDown: (event) {
+                  if (event.pointer == editorPointerDownId) return;
+                  commitAndDismiss();
+                },
+                child: const SizedBox.expand(),
               ),
             ),
             CompositedTransformFollower(
@@ -13275,7 +13286,9 @@ class _EditorScreenState extends State<EditorScreen>
               targetAnchor: Alignment.topLeft,
               followerAnchor: Alignment.topLeft,
               offset: const Offset(0, 0),
-              child: Material(
+              child: Listener(
+                onPointerDown: (event) => editorPointerDownId = event.pointer,
+                child: Material(
                 color: Colors.transparent,
                 child: Focus(
                   onKeyEvent: (node, event) {
@@ -13305,10 +13318,13 @@ class _EditorScreenState extends State<EditorScreen>
                       return KeyEventResult.handled;
                     }
 
-                    // Enter / Shift+Enter => commit + bajar/subir.
+                    // Enter / Shift+Enter => commit + mover a la derecha /
+                    // izquierda (entrada horizontal rapida tipo planilla).
+                    // Para bajar: Cmd/Ctrl+Enter confirma y luego flechas, o
+                    // clic directo en la celda destino.
                     if (event.logicalKey == LogicalKeyboardKey.enter) {
                       commitAndNavigate(
-                        isShift ? _OverlayMove.up : _OverlayMove.down,
+                        isShift ? _OverlayMove.prev : _OverlayMove.next,
                       );
                       return KeyEventResult.handled;
                     }
@@ -13515,6 +13531,7 @@ class _EditorScreenState extends State<EditorScreen>
                     ),
                   ),
                 ),
+              ),
               ),
             ),
           ],
