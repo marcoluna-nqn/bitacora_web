@@ -170,11 +170,6 @@ class _PremiumAppleHeader extends StatelessWidget {
         onDisabledTap: onGps,
       ),
       AppleToolbarItem(
-        icon: Icons.tune_rounded,
-        label: 'Modo GPS',
-        onTap: onGpsMode,
-      ),
-      AppleToolbarItem(
         icon: Icons.attach_file_rounded,
         label: 'Adjuntos',
         onTap: onAttachments,
@@ -290,6 +285,11 @@ class _PremiumAppleHeader extends StatelessWidget {
         icon: Icons.format_line_spacing_rounded,
         label: 'Densidad',
         onTap: onDensity,
+      ),
+      AppleToolbarItem(
+        icon: Icons.tune_rounded,
+        label: 'Modo GPS',
+        onTap: onGpsMode,
       ),
       AppleToolbarItem(
         icon: Icons.functions_rounded,
@@ -487,10 +487,8 @@ class _PremiumAppleHeader extends StatelessWidget {
                 ),
                 FocusTraversalOrder(
                   order: const NumericFocusOrder(1.5),
-                  child: _ToolbarMenuButton(
+                  child: _EvidenceActionGroup(
                     palette: palette,
-                    icon: Icons.attachment_rounded,
-                    label: 'Evidencia',
                     items: evidenceItems,
                   ),
                 ),
@@ -701,6 +699,142 @@ class _ToolbarMenuPill extends StatelessWidget {
           const SizedBox(width: 5),
           Icon(Icons.expand_more_rounded, size: 16, color: palette.fgMuted),
         ],
+      ),
+    );
+  }
+}
+
+/// Grupo de acciones de evidencia visible en la toolbar.
+///
+/// Reemplaza al antiguo menu desplegable "Evidencia": las acciones de captura
+/// (camara, video, audio, GPS, archivo, adjuntos) quedan a la vista en un solo
+/// clic, acorde a la propuesta de valor "planillas tecnicas con evidencias".
+class _EvidenceActionGroup extends StatelessWidget {
+  const _EvidenceActionGroup({
+    required this.palette,
+    required this.items,
+  });
+
+  final _SheetPalette palette;
+  final List<AppleToolbarItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = palette.accent;
+    final tint = palette.isLight
+        ? accent.withValues(alpha: 0.07)
+        : accent.withValues(alpha: 0.16);
+    final borderColor = accent.withValues(alpha: palette.isLight ? 0.30 : 0.46);
+    final divider = accent.withValues(alpha: palette.isLight ? 0.20 : 0.34);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(9, 5, 6, 5),
+      decoration: BoxDecoration(
+        color: tint,
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(
+          color: borderColor,
+          width: math.max(palette.hairline, 0.9).toDouble(),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.verified_outlined, size: 15, color: accent),
+          const SizedBox(width: 5),
+          Text(
+            'Evidencia',
+            style: TextStyle(
+              color: accent,
+              fontWeight: FontWeight.w800,
+              fontSize: 11.5,
+              letterSpacing: 0.2,
+              height: 1,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(width: 1, height: 22, color: divider),
+          const SizedBox(width: 4),
+          for (final item in items)
+            _EvidenceButton(palette: palette, item: item),
+        ],
+      ),
+    );
+  }
+}
+
+class _EvidenceButton extends StatefulWidget {
+  const _EvidenceButton({
+    required this.palette,
+    required this.item,
+  });
+
+  final _SheetPalette palette;
+  final AppleToolbarItem item;
+
+  @override
+  State<_EvidenceButton> createState() => _EvidenceButtonState();
+}
+
+class _EvidenceButtonState extends State<_EvidenceButton> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = widget.palette;
+    final item = widget.item;
+    final tappable = item.enabled || item.onDisabledTap != null;
+    final fg =
+        item.enabled ? palette.fg : palette.fgMuted.withValues(alpha: 0.55);
+    final tooltip = (item.shortcut ?? '').trim().isEmpty
+        ? item.label
+        : '${item.label}  ·  ${item.shortcut!.trim()}';
+
+    return Tooltip(
+      message: tooltip,
+      waitDuration: const Duration(milliseconds: 400),
+      child: MouseRegion(
+        cursor: tappable
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.basic,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: !tappable
+              ? null
+              : (item.enabled ? item.onTap : item.onDisabledTap),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            margin: const EdgeInsets.symmetric(horizontal: 1),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: _hover && tappable
+                  ? palette.accent.withValues(
+                      alpha: palette.isLight ? 0.14 : 0.26,
+                    )
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(item.icon, size: 16, color: fg),
+                const SizedBox(width: 5),
+                Text(
+                  item.label,
+                  style: TextStyle(
+                    color: fg,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11.5,
+                    height: 1,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
