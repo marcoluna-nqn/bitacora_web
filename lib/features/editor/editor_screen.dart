@@ -55,6 +55,7 @@ import 'package:bitacora_web/services/location_service.dart';
 import 'package:bitacora_web/services/location_web_service.dart';
 import 'package:bitacora_web/services/network_status.dart';
 import 'package:bitacora_web/services/offline_queue_store.dart';
+import 'package:bitacora_web/services/package_archive_builder.dart';
 import 'package:bitacora_web/services/perf_optimizer.dart';
 import 'package:bitacora_web/services/photo_acquire_service.dart';
 import 'package:bitacora_web/services/photo_bytes_resolver.dart';

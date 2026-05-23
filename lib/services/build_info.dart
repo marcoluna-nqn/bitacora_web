@@ -1,8 +1,10 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kReleaseMode;
+
 class BuildInfo {
   static const String gitSha =
-      String.fromEnvironment('GIT_SHA', defaultValue: 'dev');
+      String.fromEnvironment('GIT_SHA', defaultValue: '');
   static const String buildTime =
       String.fromEnvironment('BUILD_TIME', defaultValue: '');
   static const String buildId =
@@ -12,7 +14,7 @@ class BuildInfo {
 
   static String get shortSha {
     final s = gitSha.trim();
-    if (s.isEmpty || s == 'dev') return 'dev';
+    if (s.isEmpty || s == 'dev') return kReleaseMode ? 'release' : 'dev';
     return s.length <= 7 ? s : s.substring(0, 7);
   }
 
@@ -29,7 +31,7 @@ class BuildInfo {
   }
 
   static Map<String, dynamic> toJson() => {
-        'gitSha': gitSha.trim().isEmpty ? 'dev' : gitSha.trim(),
+        'gitSha': gitSha.trim().isEmpty ? shortSha : gitSha.trim(),
         'buildTime': buildTime.trim(),
         'buildId': buildId.trim(),
         'engineBaseUrl': engineBaseUrl.trim(),

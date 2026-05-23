@@ -46,7 +46,8 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     final dynamic state = tester.state(find.byType(EditorScreen));
     state.debugSetHeaderDraft(1, 'Medicion final');

@@ -230,20 +230,6 @@ extension _EditorShortcuts on _EditorScreenState {
       return KeyEventResult.handled;
     }
 
-    if (!isMod && !isAlt) {
-      if (event.logicalKey == LogicalKeyboardKey.keyG) {
-        unawaited(_runGpsForSelection());
-        return KeyEventResult.handled;
-      }
-      if (event.logicalKey == LogicalKeyboardKey.keyP) {
-        unawaited(_runPhotoForSelection());
-        return KeyEventResult.handled;
-      }
-      if (event.logicalKey == LogicalKeyboardKey.keyA) {
-        unawaited(_runAudioForSelection());
-        return KeyEventResult.handled;
-      }
-    }
     if (event.logicalKey == LogicalKeyboardKey.delete ||
         event.logicalKey == LogicalKeyboardKey.backspace) {
       _setCell(_selRow, _selCol, '');

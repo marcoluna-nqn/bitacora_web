@@ -13289,249 +13289,252 @@ class _EditorScreenState extends State<EditorScreen>
               child: Listener(
                 onPointerDown: (event) => editorPointerDownId = event.pointer,
                 child: Material(
-                color: Colors.transparent,
-                child: Focus(
-                  onKeyEvent: (node, event) {
-                    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                  color: Colors.transparent,
+                  child: Focus(
+                    onKeyEvent: (node, event) {
+                      if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
-                    final isShift = HardwareKeyboard.instance.isShiftPressed;
-                    final isCmd = HardwareKeyboard.instance.isMetaPressed;
-                    final isCtrl = HardwareKeyboard.instance.isControlPressed;
-                    final isMod = isCmd || isCtrl;
+                      final isShift = HardwareKeyboard.instance.isShiftPressed;
+                      final isCmd = HardwareKeyboard.instance.isMetaPressed;
+                      final isCtrl = HardwareKeyboard.instance.isControlPressed;
+                      final isMod = isCmd || isCtrl;
 
-                    if (event.logicalKey == LogicalKeyboardKey.escape) {
-                      _removeCellEditor(); // cancelar sin commit
-                      return KeyEventResult.handled;
-                    }
+                      if (event.logicalKey == LogicalKeyboardKey.escape) {
+                        _removeCellEditor(); // cancelar sin commit
+                        return KeyEventResult.handled;
+                      }
 
-                    // Cmd/Ctrl+Enter => commit y cerrar.
-                    if (event.logicalKey == LogicalKeyboardKey.enter && isMod) {
-                      commitAndDismiss();
-                      return KeyEventResult.handled;
-                    }
+                      // Cmd/Ctrl+Enter => commit y cerrar.
+                      if (event.logicalKey == LogicalKeyboardKey.enter &&
+                          isMod) {
+                        commitAndDismiss();
+                        return KeyEventResult.handled;
+                      }
 
-                    // Tab / Shift+Tab => commit + mover.
-                    if (event.logicalKey == LogicalKeyboardKey.tab) {
-                      commitAndNavigate(
-                        isShift ? _OverlayMove.prev : _OverlayMove.next,
-                      );
-                      return KeyEventResult.handled;
-                    }
+                      // Tab / Shift+Tab => commit + mover.
+                      if (event.logicalKey == LogicalKeyboardKey.tab) {
+                        commitAndNavigate(
+                          isShift ? _OverlayMove.prev : _OverlayMove.next,
+                        );
+                        return KeyEventResult.handled;
+                      }
 
-                    // Enter / Shift+Enter => commit + mover a la derecha /
-                    // izquierda (entrada horizontal rapida tipo planilla).
-                    // Para bajar: Cmd/Ctrl+Enter confirma y luego flechas, o
-                    // clic directo en la celda destino.
-                    if (event.logicalKey == LogicalKeyboardKey.enter) {
-                      commitAndNavigate(
-                        isShift ? _OverlayMove.prev : _OverlayMove.next,
-                      );
-                      return KeyEventResult.handled;
-                    }
+                      // Enter / Shift+Enter => commit + mover a la derecha /
+                      // izquierda (entrada horizontal rapida tipo planilla).
+                      // Para bajar: Cmd/Ctrl+Enter confirma y luego flechas, o
+                      // clic directo en la celda destino.
+                      if (event.logicalKey == LogicalKeyboardKey.enter) {
+                        commitAndNavigate(
+                          isShift ? _OverlayMove.prev : _OverlayMove.next,
+                        );
+                        return KeyEventResult.handled;
+                      }
 
-                    return KeyEventResult.ignored;
-                  },
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0.0, end: 1.0),
-                    duration: const Duration(milliseconds: 120),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, t, child) {
-                      final clamped = t.clamp(0.0, 1.0);
-                      final scale = 0.985 + (0.015 * clamped);
-                      return Opacity(
-                        opacity: clamped,
-                        child: Transform.scale(
-                          scale: scale,
-                          alignment: Alignment.topLeft,
-                          child: child,
-                        ),
-                      );
+                      return KeyEventResult.ignored;
                     },
-                    child: RepaintBoundary(
-                      child: Container(
-                        width: width,
-                        padding: metrics.cellPadding,
-                        decoration: BoxDecoration(
-                          // Evita blur en tiempo real para no penalizar typing/caret.
-                          color: pal.editorBg.withValues(
-                            alpha: pal.isLight ? 0.96 : 0.92,
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 120),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, t, child) {
+                        final clamped = t.clamp(0.0, 1.0);
+                        final scale = 0.985 + (0.015 * clamped);
+                        return Opacity(
+                          opacity: clamped,
+                          child: Transform.scale(
+                            scale: scale,
+                            alignment: Alignment.topLeft,
+                            child: child,
                           ),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: pal.borderStrong.withValues(
-                              alpha: pal.isLight ? 0.65 : 0.84,
+                        );
+                      },
+                      child: RepaintBoundary(
+                        child: Container(
+                          width: width,
+                          padding: metrics.cellPadding,
+                          decoration: BoxDecoration(
+                            // Evita blur en tiempo real para no penalizar typing/caret.
+                            color: pal.editorBg.withValues(
+                              alpha: pal.isLight ? 0.96 : 0.92,
                             ),
-                            width: 1,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
                               color: pal.borderStrong.withValues(
-                                alpha: pal.isLight ? 0.22 : 0.42,
+                                alpha: pal.isLight ? 0.65 : 0.84,
                               ),
-                              blurRadius: 12,
-                              offset: const Offset(0, 6),
+                              width: 1,
                             ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    key: const ValueKey(
-                                      'desktop-cell-editor-field',
-                                    ),
-                                    controller: _cellEC,
-                                    focusNode: _cellFocus,
-                                    autofocus: true,
-                                    minLines: 1,
-                                    maxLines: 2,
-                                    autocorrect: false,
-                                    enableSuggestions: false,
-                                    textInputAction: TextInputAction.done,
-                                    style: TextStyle(
-                                      color: pal.fg,
-                                      fontSize: editorFont,
-                                      height: 1.08,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.2,
-                                    ),
-                                    cursorColor: pal.accent,
-                                    decoration: InputDecoration(
-                                      isDense: true,
-                                      hintText: hintText,
-                                      hintStyle: TextStyle(color: pal.fgMuted),
-                                      border: InputBorder.none,
-                                    ),
-                                    onSubmitted: (_) => commitAndDismiss(),
-                                  ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: pal.borderStrong.withValues(
+                                  alpha: pal.isLight ? 0.22 : 0.42,
                                 ),
-                                const SizedBox(width: 8),
-                                InkWell(
-                                  onTap: commitAndDismiss,
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 4,
-                                    ),
-                                    child: Icon(
-                                      Icons.check_rounded,
-                                      color: pal.fg,
-                                      size: 20,
+                                blurRadius: 12,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      key: const ValueKey(
+                                        'desktop-cell-editor-field',
+                                      ),
+                                      controller: _cellEC,
+                                      focusNode: _cellFocus,
+                                      autofocus: true,
+                                      minLines: 1,
+                                      maxLines: 2,
+                                      autocorrect: false,
+                                      enableSuggestions: false,
+                                      textInputAction: TextInputAction.done,
+                                      style: TextStyle(
+                                        color: pal.fg,
+                                        fontSize: editorFont,
+                                        height: 1.08,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -0.2,
+                                      ),
+                                      cursorColor: pal.accent,
+                                      decoration: InputDecoration(
+                                        isDense: true,
+                                        hintText: hintText,
+                                        hintStyle:
+                                            TextStyle(color: pal.fgMuted),
+                                        border: InputBorder.none,
+                                      ),
+                                      onSubmitted: (_) => commitAndDismiss(),
                                     ),
                                   ),
+                                  const SizedBox(width: 8),
+                                  InkWell(
+                                    onTap: commitAndDismiss,
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 4,
+                                      ),
+                                      child: Icon(
+                                        Icons.check_rounded,
+                                        color: pal.fg,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (activeRow != null && activeCol != null)
+                                ValueListenableBuilder<TextEditingValue>(
+                                  valueListenable: _cellEC,
+                                  builder: (context, value, _) {
+                                    final message = _validationMessageForCell(
+                                      activeRow,
+                                      activeCol,
+                                      overrideValue: value.text,
+                                    );
+                                    if (message == null) {
+                                      return const SizedBox(height: 4);
+                                    }
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        message,
+                                        style: TextStyle(
+                                          color: pal.fgMuted,
+                                          fontSize: 11.2,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                              ],
-                            ),
-                            if (activeRow != null && activeCol != null)
                               ValueListenableBuilder<TextEditingValue>(
                                 valueListenable: _cellEC,
                                 builder: (context, value, _) {
-                                  final message = _validationMessageForCell(
-                                    activeRow,
-                                    activeCol,
-                                    overrideValue: value.text,
-                                  );
-                                  if (message == null) {
-                                    return const SizedBox(height: 4);
+                                  final formulaSuggestions =
+                                      _formulaAutocompleteSuggestions(
+                                          value.text);
+                                  final showFormulaSuggestions =
+                                      formulaSuggestions.isNotEmpty;
+                                  final showValueSuggestions =
+                                      !showFormulaSuggestions &&
+                                          valueSuggestions.isNotEmpty;
+                                  if (!showFormulaSuggestions &&
+                                      !showValueSuggestions) {
+                                    return const SizedBox.shrink();
                                   }
                                   return Padding(
-                                    padding: const EdgeInsets.only(top: 4),
-                                    child: Text(
-                                      message,
-                                      style: TextStyle(
-                                        color: pal.fgMuted,
-                                        fontSize: 11.2,
-                                        fontWeight: FontWeight.w700,
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: Row(
+                                        children: [
+                                          if (showFormulaSuggestions)
+                                            for (final suggestion
+                                                in formulaSuggestions) ...[
+                                              ActionChip(
+                                                label: Text(
+                                                  suggestion.name,
+                                                  style: TextStyle(
+                                                    color: pal.fg,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                                onPressed: () {
+                                                  _applyFormulaSuggestion(
+                                                    _cellEC,
+                                                    suggestion,
+                                                  );
+                                                  _cellFocus.requestFocus();
+                                                },
+                                              ),
+                                              const SizedBox(width: 6),
+                                            ],
+                                          if (showValueSuggestions)
+                                            for (final suggestion
+                                                in valueSuggestions) ...[
+                                              ActionChip(
+                                                label: Text(
+                                                  suggestion,
+                                                  style: TextStyle(
+                                                    color: pal.fg,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                onPressed: () {
+                                                  _cellEC.value =
+                                                      _cellEC.value.copyWith(
+                                                    text: suggestion,
+                                                    selection:
+                                                        TextSelection.collapsed(
+                                                      offset: suggestion.length,
+                                                    ),
+                                                    composing: TextRange.empty,
+                                                  );
+                                                  _cellFocus.requestFocus();
+                                                },
+                                              ),
+                                              const SizedBox(width: 6),
+                                            ],
+                                        ],
                                       ),
                                     ),
                                   );
                                 },
                               ),
-                            ValueListenableBuilder<TextEditingValue>(
-                              valueListenable: _cellEC,
-                              builder: (context, value, _) {
-                                final formulaSuggestions =
-                                    _formulaAutocompleteSuggestions(value.text);
-                                final showFormulaSuggestions =
-                                    formulaSuggestions.isNotEmpty;
-                                final showValueSuggestions =
-                                    !showFormulaSuggestions &&
-                                        valueSuggestions.isNotEmpty;
-                                if (!showFormulaSuggestions &&
-                                    !showValueSuggestions) {
-                                  return const SizedBox.shrink();
-                                }
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: Row(
-                                      children: [
-                                        if (showFormulaSuggestions)
-                                          for (final suggestion
-                                              in formulaSuggestions) ...[
-                                            ActionChip(
-                                              label: Text(
-                                                suggestion.name,
-                                                style: TextStyle(
-                                                  color: pal.fg,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
-                                              onPressed: () {
-                                                _applyFormulaSuggestion(
-                                                  _cellEC,
-                                                  suggestion,
-                                                );
-                                                _cellFocus.requestFocus();
-                                              },
-                                            ),
-                                            const SizedBox(width: 6),
-                                          ],
-                                        if (showValueSuggestions)
-                                          for (final suggestion
-                                              in valueSuggestions) ...[
-                                            ActionChip(
-                                              label: Text(
-                                                suggestion,
-                                                style: TextStyle(
-                                                  color: pal.fg,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                              onPressed: () {
-                                                _cellEC.value =
-                                                    _cellEC.value.copyWith(
-                                                  text: suggestion,
-                                                  selection:
-                                                      TextSelection.collapsed(
-                                                    offset: suggestion.length,
-                                                  ),
-                                                  composing: TextRange.empty,
-                                                );
-                                                _cellFocus.requestFocus();
-                                              },
-                                            ),
-                                            const SizedBox(width: 6),
-                                          ],
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
               ),
             ),
           ],
@@ -16241,145 +16244,147 @@ class _EditorScreenState extends State<EditorScreen>
                 child: Material(
                   type: MaterialType.transparency,
                   child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Detecte ${parsed.rowCount}x${parsed.columnCount} (${_smartTableDelimiterLabel(parsed.delimiter)}).',
-                      key: const Key('smart_paste_detect_label'),
-                      style: TextStyle(
-                        color: pal.fg,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Preview (primeras ${previewRows.length} fila(s))',
-                      style: TextStyle(
-                        color: pal.fgMuted,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      width: double.infinity,
-                      constraints: const BoxConstraints(maxHeight: 156),
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: pal.hintBg,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: pal.border,
-                          width: pal.hairline,
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Detecte ${parsed.rowCount}x${parsed.columnCount} (${_smartTableDelimiterLabel(parsed.delimiter)}).',
+                        key: const Key('smart_paste_detect_label'),
+                        style: TextStyle(
+                          color: pal.fg,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
                         ),
                       ),
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            for (int i = 0; i < previewRows.length; i++)
-                              Padding(
-                                padding: EdgeInsets.only(
-                                  bottom: i == previewRows.length - 1 ? 0 : 6,
+                      const SizedBox(height: 8),
+                      Text(
+                        'Preview (primeras ${previewRows.length} fila(s))',
+                        style: TextStyle(
+                          color: pal.fgMuted,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: double.infinity,
+                        constraints: const BoxConstraints(maxHeight: 156),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: pal.hintBg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: pal.border,
+                            width: pal.hairline,
+                          ),
+                        ),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for (int i = 0; i < previewRows.length; i++)
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: i == previewRows.length - 1 ? 0 : 6,
+                                  ),
+                                  child: Text(
+                                    previewRows[i]
+                                        .map(
+                                            (cell) => cell.isEmpty ? '-' : cell)
+                                        .join(' | '),
+                                    style: TextStyle(
+                                      color: pal.fg,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
-                                child: Text(
-                                  previewRows[i]
-                                      .map((cell) => cell.isEmpty ? '-' : cell)
-                                      .join(' | '),
+                              if (extraRows > 0)
+                                Text(
+                                  '+$extraRows fila(s) mas',
                                   style: TextStyle(
-                                    color: pal.fg,
-                                    fontSize: 12,
+                                    color: pal.fgMuted,
+                                    fontSize: 11.5,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                              ),
-                            if (extraRows > 0)
-                              Text(
-                                '+$extraRows fila(s) mas',
-                                style: TextStyle(
-                                  color: pal.fgMuted,
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      RadioGroup<_SmartPasteMode>(
+                        groupValue: mode,
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setModalState(() => mode = value);
+                        },
+                        child: Column(
+                          children: [
+                            RadioListTile<_SmartPasteMode>(
+                              key: const Key('smart_paste_mode_replace'),
+                              value: _SmartPasteMode.replaceFromActive,
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              title:
+                                  const Text('Reemplazar desde celda activa'),
+                            ),
+                            RadioListTile<_SmartPasteMode>(
+                              key: const Key('smart_paste_mode_insert'),
+                              value: _SmartPasteMode.insertRows,
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Insertar filas'),
+                            ),
                           ],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    RadioGroup<_SmartPasteMode>(
-                      groupValue: mode,
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setModalState(() => mode = value);
-                      },
-                      child: Column(
+                      SwitchListTile.adaptive(
+                        key: const Key('smart_paste_toggle_header'),
+                        value: firstRowIsHeader,
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Primera fila es header'),
+                        subtitle: firstRowIsHeader
+                            ? const Text(
+                                'Mapeo simple: renombrar columnas visibles desde la celda activa.',
+                              )
+                            : const Text(
+                                'Se pega toda la tabla como datos.',
+                              ),
+                        onChanged: (value) =>
+                            setModalState(() => firstRowIsHeader = value),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
                         children: [
-                          RadioListTile<_SmartPasteMode>(
-                            key: const Key('smart_paste_mode_replace'),
-                            value: _SmartPasteMode.replaceFromActive,
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text('Reemplazar desde celda activa'),
+                          Expanded(
+                            child: AppButton(
+                              label: AppStrings.cancel,
+                              variant: AppButtonVariant.ghost,
+                              onPressed: () => Navigator.of(ctx).pop(),
+                            ),
                           ),
-                          RadioListTile<_SmartPasteMode>(
-                            key: const Key('smart_paste_mode_insert'),
-                            value: _SmartPasteMode.insertRows,
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text('Insertar filas'),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: AppButton(
+                              key: const Key('smart_paste_apply'),
+                              label: 'Aplicar',
+                              icon: Icons.check_rounded,
+                              variant: AppButtonVariant.primary,
+                              onPressed: () {
+                                Navigator.of(ctx).pop(
+                                  _SmartPasteUserChoice(
+                                    mode: mode,
+                                    firstRowIsHeader: firstRowIsHeader,
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                    SwitchListTile.adaptive(
-                      key: const Key('smart_paste_toggle_header'),
-                      value: firstRowIsHeader,
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Primera fila es header'),
-                      subtitle: firstRowIsHeader
-                          ? const Text(
-                              'Mapeo simple: renombrar columnas visibles desde la celda activa.',
-                            )
-                          : const Text(
-                              'Se pega toda la tabla como datos.',
-                            ),
-                      onChanged: (value) =>
-                          setModalState(() => firstRowIsHeader = value),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: AppButton(
-                            label: AppStrings.cancel,
-                            variant: AppButtonVariant.ghost,
-                            onPressed: () => Navigator.of(ctx).pop(),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: AppButton(
-                            key: const Key('smart_paste_apply'),
-                            label: 'Aplicar',
-                            icon: Icons.check_rounded,
-                            variant: AppButtonVariant.primary,
-                            onPressed: () {
-                              Navigator.of(ctx).pop(
-                                _SmartPasteUserChoice(
-                                  mode: mode,
-                                  firstRowIsHeader: firstRowIsHeader,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
                   ),
                 ),
               ),
@@ -18456,6 +18461,47 @@ class _EditorScreenState extends State<EditorScreen>
   }
 
   @visibleForTesting
+  Future<void> debugAttachBytesForPackageTest(
+    int r,
+    int c, {
+    required Uint8List bytes,
+    required String fileName,
+    required String mime,
+    String? storedRefOverride,
+  }) async {
+    assert(() {
+      return true;
+    }());
+    final ref = _cellRefAt(r, c);
+    if (ref == null) return;
+    final attachmentId = _genAttachmentId('pkg_dbg_');
+    var storedRef = storedRefOverride?.trim() ?? '';
+    if (storedRef.isEmpty) {
+      final save = await _attachmentStore.saveImage(
+        cellRef: ref,
+        attachmentId: attachmentId,
+        bytes: bytes,
+        originalName: fileName,
+        mime: mime,
+        webFile: null,
+      );
+      storedRef = save?.storedRef.trim() ?? '';
+    }
+    if (storedRef.isEmpty) return;
+    final attachment = PhotoAttachment(
+      id: attachmentId,
+      filename: fileName,
+      caption: _stripExt(_safeFile(fileName)),
+      mime: mime,
+      size: bytes.lengthInBytes,
+      storedRef: storedRef,
+      thumbRef: '',
+      addedAt: DateTime.now(),
+    );
+    _applyPhotoToRef(ref, attachment);
+  }
+
+  @visibleForTesting
   void debugEmitLoadErrorFeedback([String rawMessage = 'invalid_json']) {
     assert(() {
       _reportFlowErrorMessage(
@@ -18482,6 +18528,27 @@ class _EditorScreenState extends State<EditorScreen>
     return _buildXlsxBytesForExport(
       embeddedPhotos: const <EmbeddedPhoto>[],
       attachments: const <AttachmentRow>[],
+    );
+  }
+
+  @visibleForTesting
+  Future<Uint8List?> debugBuildPackageZipBytesForTest() async {
+    assert(() {
+      return true;
+    }());
+    _syncActiveDrafts();
+    final prep = await _prepareExportPayload(includeZip: true);
+    final xlsxBytes = await _buildXlsxBytesForExport(
+      embeddedPhotos: prep.embeddedPhotos,
+      attachments: prep.attachments,
+    );
+    if (xlsxBytes == null) return null;
+    return _buildAttachmentsZip(
+      xlsxBytes: xlsxBytes,
+      photoItems: prep.photoItems,
+      audioItems: prep.audioItems,
+      manifest: prep.manifest,
+      packageSheetJson: prep.packageSheetJson,
     );
   }
 
@@ -19288,6 +19355,15 @@ class _EditorScreenState extends State<EditorScreen>
         AppStrings.infoExportCancelled,
         isError: false,
         icon: Icons.info_outline_rounded,
+      );
+    } on MissingPackageAssetException catch (e) {
+      _reportFlowErrorMessage(
+        e.message,
+        flow: AppErrorFlow.exportData,
+        operation: 'export_zip_missing_attachment',
+        fallbackMessage:
+            'No se exporto el paquete porque falta el archivo de una evidencia. Volve a adjuntarla y reintenta.',
+        icon: Icons.folder_zip_rounded,
       );
     } catch (e, st) {
       final outcome = classifyExportFlowOutcome(e);
@@ -20464,38 +20540,26 @@ class _EditorScreenState extends State<EditorScreen>
     bool Function()? shouldCancel,
   }) async {
     _throwIfOperationCancelledBy(shouldCancel);
-    final archive = Archive();
-    archive.addFile(ArchiveFile('export.xlsx', xlsxBytes.length, xlsxBytes));
+    final assets = <PackageArchiveAsset>[];
 
     for (final item in photoItems) {
       _throwIfOperationCancelledBy(shouldCancel);
       final bytes = await _loadPhotoBytesFromAttachment(item.photo);
-      if (bytes == null || bytes.isEmpty) continue;
-      archive.addFile(ArchiveFile(item.pathInZip, bytes.length, bytes));
+      assets.add(PackageArchiveAsset(path: item.pathInZip, bytes: bytes));
     }
 
     for (final item in audioItems) {
       _throwIfOperationCancelledBy(shouldCancel);
       final bytes = await _loadAudioBytesFromAttachment(item.audio);
-      if (bytes == null || bytes.isEmpty) continue;
-      archive.addFile(ArchiveFile(item.pathInZip, bytes.length, bytes));
+      assets.add(PackageArchiveAsset(path: item.pathInZip, bytes: bytes));
     }
 
-    final manifestBytes = Uint8List.fromList(utf8.encode(jsonEncode(manifest)));
-    archive.addFile(
-      ArchiveFile('manifest.json', manifestBytes.length, manifestBytes),
+    return buildBitFlowPackageArchive(
+      xlsxBytes: xlsxBytes,
+      assets: assets,
+      manifest: manifest,
+      packageSheetJson: packageSheetJson,
     );
-
-    final sheetJsonBytes = Uint8List.fromList(
-      utf8.encode(jsonEncode(packageSheetJson)),
-    );
-    archive.addFile(
-      ArchiveFile('sheet.json', sheetJsonBytes.length, sheetJsonBytes),
-    );
-
-    final encoder = ZipEncoder();
-    final zipData = encoder.encode(archive);
-    return Uint8List.fromList(zipData);
   }
 
   Future<Map<String, dynamic>> _buildPackageManifest({
@@ -20553,11 +20617,13 @@ class _EditorScreenState extends State<EditorScreen>
 
   Future<String> _readAppVersionForExport() async {
     try {
-      final info = await PackageInfo.fromPlatform();
+      final info = await PackageInfo.fromPlatform().timeout(
+        const Duration(seconds: 2),
+      );
       final version = info.version.trim();
       if (version.isNotEmpty) return version;
     } catch (_) {}
-    return '0.0.0';
+    return kReleaseMode ? 'release' : 'dev';
   }
 
   String _platformLabelForExport() {

@@ -142,6 +142,36 @@ void main() {
     }
   });
 
+  testWidgets('bare evidence shortcuts do not steal printable cell input',
+      (tester) async {
+    final restoreHarness = configureDesktopHarness();
+    try {
+      final state = await pumpDesktopEditorWithTwoDataColumns(tester);
+
+      await tester.tap(find.text('seed').first);
+      await tester.pump();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.keyA, character: 'A');
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.keyA);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.keyB, character: 'B');
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.keyB);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.keyC, character: 'C');
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.keyC);
+      await tester.pump();
+
+      final editor = find.byKey(const ValueKey('desktop-cell-editor-field'));
+      expect(editor, findsOneWidget);
+      expect(state.debugDisplayedCellText(0, 0), 'ABC');
+      expect(find.textContaining('Permiso de mic'), findsNothing);
+
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(state.debugCellText(0, 0), 'ABC');
+    } finally {
+      restoreHarness();
+    }
+  });
+
   testWidgets('desktop cell editor enter navigation commits left and right',
       (tester) async {
     final restoreHarness = configureDesktopHarness();
@@ -167,6 +197,37 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(state.debugCellText(0, 1), 'DEF');
+      expect(state.debugSelectedCol, 0);
+    } finally {
+      restoreHarness();
+    }
+  });
+
+  testWidgets('desktop cell editor tab navigation commits left and right',
+      (tester) async {
+    final restoreHarness = configureDesktopHarness();
+    try {
+      final state = await pumpDesktopEditorWithTwoDataColumns(tester);
+
+      var editor = await openCellEditor(tester, 'seed');
+      await tester.enterText(editor, 'TAB1');
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+
+      expect(state.debugCellText(0, 0), 'TAB1');
+      expect(state.debugSelectedCol, 1);
+
+      editor = find.byKey(const ValueKey('desktop-cell-editor-field'));
+      expect(editor, findsOneWidget);
+      await tester.enterText(editor, 'TAB2');
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.pumpAndSettle();
+
+      expect(state.debugCellText(0, 1), 'TAB2');
       expect(state.debugSelectedCol, 0);
     } finally {
       restoreHarness();

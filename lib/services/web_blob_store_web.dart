@@ -50,9 +50,11 @@ class WebBlobStoreImpl implements WebBlobStore {
     _lastSaveReason = null;
     _lastSaveStore = null;
     html.Blob blob;
+    Uint8List? sourceBytes;
     if (source is html.Blob) {
       blob = source;
     } else if (source is Uint8List) {
+      sourceBytes = source;
       blob = html.Blob([source], mime);
     } else {
       blob = html.Blob(<Object>[], mime);
@@ -87,17 +89,20 @@ class WebBlobStoreImpl implements WebBlobStore {
         await tx.completed;
         _lastSaveStore = 'indexeddb';
         debugLogSaveDecision('indexeddb', null);
-        return WebBlobRecord(
+        final rec = WebBlobRecord(
           key: key,
           name: name,
           mime: mime,
           size: size,
           createdAt: now,
+          bytes: sourceBytes,
           blob: blob,
           storageMode: 'indexeddb',
           sessionOnly: false,
           storageReason: null,
         );
+        _mem[key] = rec;
+        return rec;
       } catch (e) {
         _lastSaveReason = _classifyStorageReason(e);
         // fallthrough to Cache API
@@ -121,17 +126,20 @@ class WebBlobStoreImpl implements WebBlobStore {
       _lastSaveReason = finalReasonCode;
       _lastSaveStore = 'cache';
       debugLogSaveDecision('cache', finalReasonCode);
-      return WebBlobRecord(
+      final rec = WebBlobRecord(
         key: key,
         name: name,
         mime: mime,
         size: size,
         createdAt: now,
+        bytes: sourceBytes,
         blob: blob,
         storageMode: 'cache',
         sessionOnly: false,
         storageReason: finalReasonCode,
       );
+      _mem[key] = rec;
+      return rec;
     }
 
     // Fallback RAM
@@ -147,6 +155,7 @@ class WebBlobStoreImpl implements WebBlobStore {
       mime: mime,
       size: size,
       createdAt: now,
+      bytes: sourceBytes,
       blob: blob,
       storageMode: 'ram',
       sessionOnly: true,

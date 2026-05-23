@@ -645,7 +645,9 @@ class _AppHomeState extends State<_AppHome> {
         const _TopNoticeItem(
           message: 'Firebase no inicio. Modo offline habilitado.',
         ),
-      if (!RuntimeFlags.isAuthRequired && !_demoNoticeDismissedInSession)
+      if (RuntimeFlags.showDemoNotice &&
+          !RuntimeFlags.isAuthRequired &&
+          !_demoNoticeDismissedInSession)
         _TopNoticeItem(
           message: 'Modo demo activo: login deshabilitado temporalmente.',
           dismissible: true,
