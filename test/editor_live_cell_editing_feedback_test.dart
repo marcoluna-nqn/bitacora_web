@@ -1,6 +1,7 @@
 import 'package:bitacora_web/features/editor/editor_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -36,6 +37,30 @@ void main() {
           initialHeaders: <String>['Texto', 'Fotos'],
           initialRows: <List<String>>[
             <String>['seed', ''],
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    return tester.state(find.byType(EditorScreen)) as dynamic;
+  }
+
+  Future<dynamic> pumpDesktopEditorWithTwoDataColumns(
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    tester.view.physicalSize = const Size(1440, 2200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: EditorScreen(
+          sheetId: 'live-cell-navigation-feedback',
+          initialHeaders: <String>['Col 1', 'Col 2', 'Fotos'],
+          initialRows: <List<String>>[
+            <String>['seed', '', ''],
           ],
         ),
       ),
@@ -83,6 +108,66 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
       expect(state.debugCellText(0, 0), '');
+    } finally {
+      restoreHarness();
+    }
+  });
+
+  testWidgets('desktop cell editor keeps first key during focus handoff',
+      (tester) async {
+    final restoreHarness = configureDesktopHarness();
+    try {
+      final state = await pumpDesktopEditor(tester);
+
+      await tester.tap(find.text('seed').first);
+      await tester.pump();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.keyA, character: 'A');
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.keyA);
+      await tester.pump();
+
+      final editor = find.byKey(const ValueKey('desktop-cell-editor-field'));
+      expect(editor, findsOneWidget);
+      expect(state.debugDisplayedCellText(0, 0), 'A');
+      final field = tester.widget<TextField>(editor);
+      expect(field.controller?.text, 'A');
+
+      await tester.enterText(editor, 'ABC');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(state.debugCellText(0, 0), 'ABC');
+    } finally {
+      restoreHarness();
+    }
+  });
+
+  testWidgets('desktop cell editor enter navigation commits left and right',
+      (tester) async {
+    final restoreHarness = configureDesktopHarness();
+    try {
+      final state = await pumpDesktopEditorWithTwoDataColumns(tester);
+
+      var editor = await openCellEditor(tester, 'seed');
+      await tester.enterText(editor, 'ABC');
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(state.debugCellText(0, 0), 'ABC');
+      expect(state.debugSelectedCol, 1);
+
+      editor = find.byKey(const ValueKey('desktop-cell-editor-field'));
+      expect(editor, findsOneWidget);
+      await tester.enterText(editor, 'DEF');
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.pumpAndSettle();
+
+      expect(state.debugCellText(0, 1), 'DEF');
+      expect(state.debugSelectedCol, 0);
     } finally {
       restoreHarness();
     }

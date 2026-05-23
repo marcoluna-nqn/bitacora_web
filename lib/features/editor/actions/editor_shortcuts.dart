@@ -33,7 +33,16 @@ extension _EditorShortcuts on _EditorScreenState {
     }
 
     final focus = FocusManager.instance.primaryFocus;
-    if (focus?.context?.widget is EditableText) {
+    final focusIsEditableText = focus?.context?.widget is EditableText;
+    if (_cellEditorEntry != null && !focusIsEditableText) {
+      final printableChar = _extractPrintableChar(event);
+      if (printableChar != null) {
+        _insertPrintableIntoCellEditor(printableChar);
+        return KeyEventResult.handled;
+      }
+    }
+
+    if (focusIsEditableText) {
       return KeyEventResult.ignored;
     }
 
@@ -274,5 +283,28 @@ extension _EditorShortcuts on _EditorScreenState {
     }
 
     return char;
+  }
+
+  void _insertPrintableIntoCellEditor(String char) {
+    final value = _cellEC.value;
+    final text = value.text;
+    final selection = value.selection;
+    final start = selection.isValid
+        ? selection.start.clamp(0, text.length).toInt()
+        : text.length;
+    final end = selection.isValid
+        ? selection.end.clamp(0, text.length).toInt()
+        : text.length;
+    final rangeStart = math.min(start, end);
+    final rangeEnd = math.max(start, end);
+    final next = text.replaceRange(rangeStart, rangeEnd, char);
+    _cellEC.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(
+        offset: rangeStart + char.length,
+      ),
+      composing: TextRange.empty,
+    );
+    _cellFocus.requestFocus();
   }
 }
