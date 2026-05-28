@@ -209,7 +209,7 @@ class _AboutScreenState extends State<AboutScreen> {
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
         children: [
           Text(
-            'Bit Flow',
+            'BitFlow',
             style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.w800,
               letterSpacing: -0.3,
@@ -217,7 +217,7 @@ class _AboutScreenState extends State<AboutScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Bitácoras técnicas con foco en rapidez, claridad y confiabilidad.',
+            'Bitácoras técnicas con BitFlow: rapidez, claridad y confiabilidad.',
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.78),
             ),

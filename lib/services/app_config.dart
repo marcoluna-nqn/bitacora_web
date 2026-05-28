@@ -67,16 +67,17 @@ class AppConfig {
 
   static AppConfig defaults() {
     return const AppConfig(
-      brandName: 'Bitacora Pro',
+      brandName: 'BitFlow',
       brandTagline: 'Bitacora operativa con evidencias en 1 lugar.',
-      contactEmail: 'ventas@tuempresa.com',
-      contactWhatsApp: '+5491122334455',
-      whatsappMessage: 'Hola! Quiero una demo de Bitacora Pro.',
-      pricingBasic: 'USD 19 / mes',
-      pricingPro: 'USD 49 / mes',
+      contactEmail: 'marcoantoniolunavillegas@gmail.com',
+      contactWhatsApp: '+542996209136',
+      whatsappMessage:
+          'Hola! Quiero solicitar un piloto gratuito de BitFlow.',
+      pricingBasic: 'Pilotos en curso',
+      pricingPro: 'Consultar plan',
       pricingEnterprise: 'A medida',
       pricingNote:
-          'Licencia local sin servidor. Soporte y actualizaciones opcionales.',
+          'BitFlow esta en fase de pilotos controlados. Sin servidores, sin friccion.',
     );
   }
 

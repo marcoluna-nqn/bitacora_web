@@ -412,7 +412,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Bitácora operativa local-first',
+            'BitFlow — bitácora operativa local-first',
             style: tokens.text.bodyMedium?.copyWith(
               color: tokens.colors.textSecondary,
               fontWeight: FontWeight.w500,

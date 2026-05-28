@@ -135,6 +135,15 @@ docs/bitflow/app/
 _legacy/tmp_20260206/
 docs/bitflow/downloads/BitFlow.apk
 dist/
+_quarantine/
+
+# Backup copies of source assets
+interop.backup.js
+*.backup.js
+
+# Local tooling / agent workspaces
+.claude/
+artifacts/
 
 # Local agent/session workspace files
 .openclaw/

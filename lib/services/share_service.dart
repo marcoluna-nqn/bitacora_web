@@ -19,7 +19,7 @@ class ShareService {
       final uri = Uri(
         scheme: 'mailto',
         queryParameters: const {
-          'subject': 'Bitácora - Exportación XLSX',
+          'subject': 'BitFlow - Exportación XLSX',
           'body': 'Se descargó el archivo desde el navegador.',
         },
       );
@@ -32,7 +32,7 @@ class ShareService {
       try {
         final email = Email(
           body: 'Adjunto XLSX.',
-          subject: 'Bitácora - Exportación',
+          subject: 'BitFlow - Exportación',
           recipients: const [],
           attachmentPaths: [savedPathOrName],
           isHTML: false,
@@ -56,7 +56,7 @@ class ShareService {
       final uri = Uri(
         scheme: 'mailto',
         queryParameters: {
-          'subject': 'Bitácora - Exportación',
+          'subject': 'BitFlow - Exportación',
           'body':
               'No se pudo adjuntar automáticamente.\nRuta del archivo: $savedPathOrName',
         },

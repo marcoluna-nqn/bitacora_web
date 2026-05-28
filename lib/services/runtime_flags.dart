@@ -19,7 +19,7 @@ class RuntimeFlags {
 
   static const bool showDemoNotice = bool.fromEnvironment(
     'SHOW_DEMO_NOTICE',
-    defaultValue: false,
+    defaultValue: true,
   );
 
   static const bool isAuthRequired = authEnabled && !demoMode;

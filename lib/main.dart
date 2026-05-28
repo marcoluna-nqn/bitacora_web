@@ -355,7 +355,7 @@ class _AppState extends State<App> {
     Widget buildBoot(Widget child) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'Bitacora Web',
+        title: 'BitFlow',
         theme: lightTheme,
         darkTheme: darkTheme,
         themeMode: _isLight ? ThemeMode.light : ThemeMode.dark,
@@ -431,7 +431,7 @@ class _AppState extends State<App> {
 
         return MaterialApp.router(
           debugShowCheckedModeBanner: false,
-          title: 'Bitacora Web',
+          title: 'BitFlow',
           theme: lightTheme,
           darkTheme: darkTheme,
           themeMode: _isLight ? ThemeMode.light : ThemeMode.dark,
@@ -649,7 +649,9 @@ class _AppHomeState extends State<_AppHome> {
           !RuntimeFlags.isAuthRequired &&
           !_demoNoticeDismissedInSession)
         _TopNoticeItem(
-          message: 'Modo demo activo: login deshabilitado temporalmente.',
+          message:
+              'Demo controlada de BitFlow. Tus datos viven en este navegador: '
+              'exportá Backup ZIP antes de limpiar caché o cambiar de equipo.',
           dismissible: true,
           onDismiss: _dismissDemoNotice,
         ),

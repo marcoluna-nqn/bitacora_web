@@ -89,7 +89,7 @@ class LandingScreen extends StatelessWidget {
                           children: [
                             _TopNav(
                               brand: config.brandName.isEmpty
-                                  ? 'Bitácora'
+                                  ? 'BitFlow'
                                   : config.brandName,
                               onToggleTheme: onToggleTheme,
                             ),
@@ -206,7 +206,7 @@ class LandingScreen extends StatelessWidget {
       scheme: 'mailto',
       path: mail,
       queryParameters: const <String, String>{
-        'subject': 'Consulta Bitácora',
+        'subject': 'Consulta BitFlow',
       },
     );
     await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -226,7 +226,7 @@ class _TopNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppTopBar(
       title: brand,
-      subtitle: 'Bitácora operativa sin conexión',
+      subtitle: 'BitFlow — bitácora operativa sin conexión',
       leading: Icon(
         Icons.grid_view_rounded,
         color: context.tokens.colors.textPrimary,
@@ -277,7 +277,7 @@ class _HeroSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Bitácora operativa con evidencias en un solo lugar',
+                    'BitFlow — bitácora operativa con evidencias en un solo lugar',
                     style: t.text.displaySmall?.copyWith(
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.6,
@@ -931,7 +931,7 @@ class _Pricing extends StatelessWidget {
             ],
             const SizedBox(height: 18),
             AppButton(
-              label: 'Probar Bitácora',
+              label: 'Probar BitFlow',
               variant: AppButtonVariant.primary,
               onPressed: onPrimary,
             ),
@@ -1131,11 +1131,11 @@ class _Footer extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
-              config.brandName.isEmpty ? 'Bitácora' : config.brandName,
+              config.brandName.isEmpty ? 'BitFlow' : config.brandName,
               style: t.text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
             Text(
-              'Soporte: ${config.contactEmail.isEmpty ? 'soporte@bitacora.local' : config.contactEmail}',
+              'Soporte: ${config.contactEmail.isEmpty ? 'marcoantoniolunavillegas@gmail.com' : config.contactEmail}',
               style: t.text.bodySmall?.copyWith(color: t.colors.textSecondary),
             ),
             if (showDebugBadge)
