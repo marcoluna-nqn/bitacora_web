@@ -137,7 +137,7 @@ Future<void> main() async {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Gridnote - Error',
+                          'BitFlow — Error',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -243,6 +243,14 @@ class _AppState extends State<App> {
     Object? firebaseError;
     Object? storeError;
 
+    final bootWatch = Stopwatch()..start();
+    void mark(String step) {
+      if (kDebugMode) {
+        debugPrint('[boot] $step @ ${bootWatch.elapsedMilliseconds}ms');
+      }
+    }
+
+    mark('start');
     try {
       final firebaseTimeout = RuntimeFlags.demoMode
           ? const Duration(seconds: 3)
@@ -255,6 +263,7 @@ class _AppState extends State<App> {
       firebaseOk = false;
       firebaseError = e;
     }
+    mark('firebase ok=$firebaseOk');
 
     try {
       await SheetStore.init().timeout(const Duration(seconds: 6));
@@ -263,6 +272,7 @@ class _AppState extends State<App> {
       storeOk = false;
       storeError = e;
     }
+    mark('sheet_store ok=$storeOk');
 
     try {
       await initSyncLayer().timeout(const Duration(seconds: 4));
@@ -271,10 +281,12 @@ class _AppState extends State<App> {
         debugPrint('[boot] Sync layer init failed: $e');
       }
     }
+    mark('sync_layer');
 
     try {
       await AppErrorReporter.I.init().timeout(const Duration(seconds: 2));
     } catch (_) {}
+    mark('error_reporter');
 
     try {
       await BitFlowProductService.I
@@ -288,6 +300,7 @@ class _AppState extends State<App> {
         debugPrint('[boot] Product layer init failed: ');
       }
     }
+    mark('product_service');
 
     if (firebaseOk) {
       try {
@@ -299,9 +312,11 @@ class _AppState extends State<App> {
           debugPrint('[boot] Payment return hook failed: $e');
         }
       }
+      mark('payment_return');
     }
     // EngineConfig en background: no bloquea primera pintura.
     unawaited(_initEngineConfigNonBlocking());
+    mark('done');
 
     return _BootStatus(
       firebaseOk: firebaseOk,
@@ -401,7 +416,7 @@ class _AppState extends State<App> {
             _BootSplash(
               isLight: _isLight,
               onToggleTheme: _toggleTheme,
-              subtitle: 'Inicializando...',
+              subtitle: 'Preparando demo controlada…',
             ),
           );
         }
@@ -727,134 +742,125 @@ class _BootSplash extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final cardBg = theme.brightness == Brightness.dark
-        ? const Color(0xCC0B0D1A)
-        : const Color(0xCCFFFFFF);
+    final isDark = theme.brightness == Brightness.dark;
+    final inkColor = isDark ? Colors.white : const Color(0xFF1C1815);
+    final mutedColor = isDark
+        ? Colors.white.withValues(alpha: 0.62)
+        : const Color(0xFF1C1815).withValues(alpha: 0.62);
+    final detailsBg = isDark
+        ? Colors.white.withValues(alpha: 0.04)
+        : const Color(0xFF1C1815).withValues(alpha: 0.04);
+    final detailsBorder = isDark
+        ? Colors.white.withValues(alpha: 0.10)
+        : const Color(0xFF1C1815).withValues(alpha: 0.08);
 
     return SafeArea(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Card(
-              elevation: 0,
-              color: cardBg,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-                side: BorderSide(
-                  color: theme.brightness == Brightness.dark
-                      ? const Color(0x22FFFFFF)
-                      : const Color(0x14000000),
-                ),
-              ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: 12,
+            right: 12,
+            child: _PillButton(
+              label: isLight ? 'Noche' : 'D\u00EDa',
+              outlined: true,
+              onPressed: onToggleTheme,
+            ),
+          ),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
               child: Padding(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: cs.primary.withValues(alpha: 0.14),
-                          ),
-                          child: Icon(
-                            Icons.grid_view_rounded,
-                            color: cs.primary,
-                          ),
+                    RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        style: theme.textTheme.displaySmall?.copyWith(
+                          color: inkColor,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -1.0,
+                          height: 1.05,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Gridnote',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.2,
-                            ),
+                        children: const [
+                          TextSpan(
+                            text: 'Bit',
+                            style: TextStyle(fontWeight: FontWeight.w800),
                           ),
-                        ),
-                        _PillButton(
-                          label: isLight ? 'Noche' : 'D\u00EDa',
-                          outlined: true,
-                          onPressed: onToggleTheme,
-                        ),
-                      ],
+                          TextSpan(text: 'Flow'),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      subtitle,
+                      'Planillas t\u00E9cnicas con evidencias, GPS y exportaci\u00F3n.',
+                      textAlign: TextAlign.center,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: cs.onSurface.withValues(alpha: 0.78),
-                        height: 1.2,
+                        color: mutedColor,
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 22),
+                    if (showProgress)
+                      SizedBox(
+                        width: 64,
+                        height: 2,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            backgroundColor: inkColor.withValues(alpha: 0.08),
+                            valueColor: AlwaysStoppedAnimation<Color>(inkColor),
+                            minHeight: 2,
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        width: 64,
+                        height: 2,
+                        decoration: BoxDecoration(
+                          color: cs.error.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    const SizedBox(height: 14),
+                    Text(
+                      subtitle,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: mutedColor,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.1,
+                      ),
+                    ),
                     if ((details ?? '').trim().isNotEmpty) ...[
+                      const SizedBox(height: 14),
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
-                          color: theme.brightness == Brightness.dark
-                              ? const Color(0x14000000)
-                              : const Color(0x0A000000),
-                          border: Border.all(
-                            color: theme.brightness == Brightness.dark
-                                ? const Color(0x22FFFFFF)
-                                : const Color(0x14000000),
-                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          color: detailsBg,
+                          border: Border.all(color: detailsBorder),
                         ),
                         child: Text(
                           details!,
                           style: theme.textTheme.bodySmall?.copyWith(
                             fontFamily: 'monospace',
-                            height: 1.2,
-                            color: cs.onSurface.withValues(alpha: 0.78),
+                            height: 1.3,
+                            color: mutedColor,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
                     ],
-                    Row(
-                      children: [
-                        if (showProgress) ...[
-                          const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                          const SizedBox(width: 10),
-                        ] else ...[
-                          Icon(
-                            Icons.warning_amber_rounded,
-                            size: 18,
-                            color: cs.onSurface.withValues(alpha: 0.7),
-                          ),
-                          const SizedBox(width: 10),
-                        ],
-                        Expanded(
-                          child: Text(
-                            showProgress
-                                ? 'Inicializando en segundo plano.'
-                                : 'Sin spinner infinito: puedes reintentar sin recargar.',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: cs.onSurface.withValues(alpha: 0.7),
-                              height: 1.25,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                     if (actions != null) ...[
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 18),
                       Wrap(
                         spacing: 10,
                         runSpacing: 10,
+                        alignment: WrapAlignment.center,
                         children: actions!,
                       ),
                     ],
@@ -863,7 +869,7 @@ class _BootSplash extends StatelessWidget {
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
