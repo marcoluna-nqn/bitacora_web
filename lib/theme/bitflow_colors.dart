@@ -25,7 +25,17 @@ class BitFlowColors {
   static const Color warning = Color(0xFFF59E0B);
   static const Color error = Color(0xFFDC2626);
 
-  static const Color darkBg = Color(0xFF081113);
-  static const Color darkSurface = Color(0xFF10181B);
-  static const Color darkSurfaceMuted = Color(0xFF142225);
+  // Dark palette — warm carbon gray (Claude/Anthropic-style premium B2B).
+  // Sin tinte azul, sin negro puro, sin acento neón.
+  static const Color darkBg = Color(0xFF1A1A1A);
+  static const Color darkSurface = Color(0xFF262626);
+  static const Color darkSurfaceMuted = Color(0xFF2E2E2E);
+  static const Color darkSurfaceElevated = Color(0xFF232323);
+  static const Color darkBorder = Color(0xFF3A3A3A);
+  static const Color darkBorderStrong = Color(0xFF4A4A4A);
+  static const Color darkTextPrimary = Color(0xFFF2F2F2);
+  static const Color darkTextSecondary = Color(0xFFBDBDBD);
+  static const Color darkTextMuted = Color(0xFF8F8F8F);
+  static const Color darkAccent = Color(0xFFC9AB84); // warm sand
+  static const Color darkAccentMuted = Color(0xFF3A3225);
 }

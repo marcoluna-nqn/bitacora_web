@@ -71,12 +71,12 @@ class GridnoteTheme {
   final Color accent;
 
   static GridnoteTheme build(bool light) {
-    // Acento iOS-like.
-    final accentMono = light ? BitFlowColors.teal : BitFlowColors.tealBright;
-    final tableAccent = light ? BitFlowColors.ink : const Color(0xFFF3F3F3);
+    // Acento: teal en claro, warm sand en oscuro (sin neón turquesa).
+    final accentMono = light ? BitFlowColors.teal : BitFlowColors.darkAccent;
+    final tableAccent =
+        light ? BitFlowColors.ink : BitFlowColors.darkTextPrimary;
 
-    // “Warm Apple” (beige/arena) para que se sienta premium.
-    // Si querés más frío, cambiá scaffoldLight a 0xFFF5F5F7 y listo.
+    // Scaffold cálido en ambos modos (warm Apple en claro, warm carbon en oscuro).
     const scaffoldLight = BitFlowColors.bg;
     const scaffoldDark = BitFlowColors.darkBg;
 
@@ -84,7 +84,7 @@ class GridnoteTheme {
     const cardDark = BitFlowColors.darkSurface;
 
     const dividerLight = BitFlowColors.border;
-    const dividerDark = Color(0xFF2B2B31);
+    const dividerDark = BitFlowColors.darkBorder;
 
     final brightness = light ? Brightness.light : Brightness.dark;
 
@@ -396,7 +396,7 @@ class GridnoteTheme {
         }),
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return accentMono;
-          return light ? Colors.white : const Color(0xFF16161A);
+          return light ? Colors.white : BitFlowColors.darkSurfaceMuted;
         }),
       ),
       checkboxTheme: CheckboxThemeData(
@@ -567,7 +567,7 @@ class GridnoteTableStyle {
 
     final headerBg = isLight
         ? BitFlowColors.surfaceMuted
-        : const Color(0xFF0F172A);
+        : BitFlowColors.darkSurfaceMuted;
 
     final cellBg = g.card;
 
@@ -575,7 +575,8 @@ class GridnoteTableStyle {
       zebra: true,
       zebraColor: divider.withAlpha(_a(isLight ? 0.10 : 0.18)),
       headerBg: headerBg,
-      headerText: isLight ? BitFlowColors.ink : const Color(0xFFF9FAFB),
+      headerText:
+          isLight ? BitFlowColors.ink : BitFlowColors.darkTextPrimary,
       gridLine: divider.withAlpha(_a(isLight ? 0.88 : 0.62)),
       cellBg: cellBg,
       cellTextStyle: g.material.textTheme.bodyMedium?.copyWith(

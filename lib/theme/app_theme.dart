@@ -141,21 +141,23 @@ class AppTheme {
         : BitFlowColors.darkSurfaceMuted;
     final surfaceElevated = isLight
         ? BitFlowColors.surfaceElevated
-        : const Color(0xFF17181D);
+        : BitFlowColors.darkSurfaceElevated;
 
-    final neutralInk = isLight ? BitFlowColors.ink : const Color(0xFFF4F4F6);
+    final neutralInk =
+        isLight ? BitFlowColors.ink : BitFlowColors.darkTextPrimary;
     final neutralMuted = isLight
         ? BitFlowColors.textSecondary
-        : const Color(0xFFB6B7C0);
-    final border = isLight ? BitFlowColors.border : const Color(0xFF2B2D34);
+        : BitFlowColors.darkTextSecondary;
+    final border =
+        isLight ? BitFlowColors.border : BitFlowColors.darkBorder;
     final borderStrong = isLight
         ? BitFlowColors.borderStrong
-        : const Color(0xFF3A3C45);
+        : BitFlowColors.darkBorderStrong;
 
-    final accent = isLight ? BitFlowColors.teal : BitFlowColors.tealBright;
+    final accent = isLight ? BitFlowColors.teal : BitFlowColors.darkAccent;
     final accentMuted = isLight
         ? BitFlowColors.tealSoft
-        : accent.withValues(alpha: 0.18);
+        : BitFlowColors.darkAccentMuted;
 
     final statusBg = accentMuted;
     final statusFg = accent;
